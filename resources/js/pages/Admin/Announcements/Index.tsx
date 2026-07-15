@@ -1,29 +1,31 @@
 import { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
-import { Edit3, Megaphone, Plus, Trash2 } from 'lucide-react';
+import { Megaphone, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { AnnouncementList } from '@/components/announcements/announcement-list';
+import type { Announcement } from '@/components/announcements/announcement-card';
 import { EmptyState } from '@/components/school/empty-state';
 import { FormField } from '@/components/school/form-field';
 import { ModuleShell, setModuleLayout } from '@/components/school/module-shell';
 import { PageHeader } from '@/components/school/page-header';
 import { StatCard } from '@/components/school/stat-card';
+import type { LinkItem } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-type Announcement = {
-    id: number;
-    title: string;
-    message: string;
-    created_by: string | null;
-    created_at: string | null;
+type PaginatedData = {
+    data: Announcement[];
+    links: LinkItem[];
+    from: number | null;
+    to: number | null;
+    total: number;
 };
 
 type Props = {
-    announcements: Announcement[];
+    announcements: PaginatedData;
     stats: { total: number };
 };
 
@@ -54,29 +56,35 @@ export default function Index({ announcements, stats }: Props) {
 
     return (
         <ModuleShell title="Announcements" breadcrumbs={[{ title: 'Administration', href: '/admin/overview' }, { title: 'Announcements', href: '/admin/announcements' }]}>
-            <PageHeader title="Manage Announcements" description="Create and broadcast announcements to students and staff." icon={Megaphone} accent="violet" actions={<Button className="rounded-xl" onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> New Announcement</Button>} />
+            <PageHeader 
+                title="Manage Announcements" 
+                description="Create and broadcast announcements to students and staff." 
+                icon={Megaphone} 
+                accent="violet" 
+                actions={
+                    <Button className="rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/30 hover:from-violet-700 hover:to-purple-700" onClick={openCreate}>
+                        <Plus className="mr-2 h-4 w-4" /> New Announcement
+                    </Button>
+                } 
+            />
+            
             <StatCard label="Total Announcements" value={stats.total} icon={Megaphone} accent="violet" />
-            {announcements.length === 0 ? (
-                <EmptyState icon={Megaphone} title="No announcements" description="Create your first announcement to notify the school community." action={<Button onClick={openCreate} className="rounded-xl">New Announcement</Button>} />
+            
+            {announcements.data.length === 0 ? (
+                <EmptyState 
+                    icon={Megaphone} 
+                    title="No announcements" 
+                    description="Create your first announcement to notify the school community." 
+                    action={<Button onClick={openCreate} className="rounded-xl">New Announcement</Button>} 
+                />
             ) : (
-                <div className="grid gap-4">
-                    {announcements.map((a) => (
-                        <Card key={a.id} className="rounded-2xl">
-                            <CardContent className="flex items-start justify-between gap-4 pt-6">
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold">{a.title}</h3>
-                                    <p className="mt-2 text-sm text-muted-foreground">{a.message}</p>
-                                    <p className="mt-3 text-xs text-muted-foreground">{a.created_at} · {a.created_by}</p>
-                                </div>
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Edit3 className="h-4 w-4" /></Button>
-                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(a)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                <AnnouncementList
+                    announcements={announcements}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                />
             )}
+            
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="rounded-2xl sm:max-w-lg">
                     <DialogHeader><DialogTitle>{editing ? 'Edit Announcement' : 'New Announcement'}</DialogTitle></DialogHeader>

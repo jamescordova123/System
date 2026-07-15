@@ -41,11 +41,13 @@ class SchoolOverviewController extends Controller
 
     public function announcements()
     {
+        $announcements = Announcement::with('creator')
+            ->latest()
+            ->paginate(10)
+            ->through(fn (Announcement $a) => $this->formatAnnouncement($a));
+
         return Inertia::render('Admin/Announcements/Index', [
-            'announcements' => Announcement::with('creator')
-                ->latest()
-                ->get()
-                ->map(fn (Announcement $a) => $this->formatAnnouncement($a)),
+            'announcements' => $announcements,
             'stats' => [
                 'total' => Announcement::count(),
             ],
