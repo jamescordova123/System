@@ -30,7 +30,7 @@ export default function PublicNavbar() {
                     {/* Logo */}
                     <div className="flex items-center">
                         <Link href="/" className="flex items-center gap-2">
-                            <div className="flex aspect-square h-9 w-9 items-center justify-center rounded-lg bg-red-500 text-white shadow-md shadow-red-500/20 dark:bg-red-600">
+                            <div className="flex aspect-square h-9 w-9 items-center justify-center rounded-lg  text-white shadow-md shadow-red-500/20 dark:bg-red-600">
                                 <AppLogoDynamic className="h-6 w-6 object-contain" iconClassName="h-5 w-5 text-white" />
                             </div>
                             <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
