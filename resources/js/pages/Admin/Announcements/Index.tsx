@@ -1,0 +1,107 @@
+import { useState } from 'react';
+import { useForm, router } from '@inertiajs/react';
+import { Edit3, Megaphone, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { EmptyState } from '@/components/school/empty-state';
+import { FormField } from '@/components/school/form-field';
+import { ModuleShell, setModuleLayout } from '@/components/school/module-shell';
+import { PageHeader } from '@/components/school/page-header';
+import { StatCard } from '@/components/school/stat-card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+type Announcement = {
+    id: number;
+    title: string;
+    message: string;
+    created_by: string | null;
+    created_at: string | null;
+};
+
+type Props = {
+    announcements: Announcement[];
+    stats: { total: number };
+};
+
+const emptyForm = { title: '', message: '', notify_students: true };
+
+export default function Index({ announcements, stats }: Props) {
+    const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState<Announcement | null>(null);
+    const { data, setData, post, put, processing, errors, reset } = useForm(emptyForm);
+
+    const openCreate = () => { setEditing(null); reset(); setOpen(true); };
+    const openEdit = (announcement: Announcement) => {
+        setEditing(announcement);
+        setData({ title: announcement.title, message: announcement.message, notify_students: false });
+        setOpen(true);
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const options = { onSuccess: () => { setOpen(false); reset(); setEditing(null); }, onError: () => toast.error('Please fix the form errors.') };
+        editing ? put(`/admin/announcements/${editing.id}`, options) : post('/admin/announcements', options);
+    };
+
+    const handleDelete = (announcement: Announcement) => {
+        if (!confirm(`Delete announcement "${announcement.title}"?`)) return;
+        router.delete(`/admin/announcements/${announcement.id}`);
+    };
+
+    return (
+        <ModuleShell title="Announcements" breadcrumbs={[{ title: 'Administration', href: '/admin/overview' }, { title: 'Announcements', href: '/admin/announcements' }]}>
+            <PageHeader title="Manage Announcements" description="Create and broadcast announcements to students and staff." icon={Megaphone} accent="violet" actions={<Button className="rounded-xl" onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> New Announcement</Button>} />
+            <StatCard label="Total Announcements" value={stats.total} icon={Megaphone} accent="violet" />
+            {announcements.length === 0 ? (
+                <EmptyState icon={Megaphone} title="No announcements" description="Create your first announcement to notify the school community." action={<Button onClick={openCreate} className="rounded-xl">New Announcement</Button>} />
+            ) : (
+                <div className="grid gap-4">
+                    {announcements.map((a) => (
+                        <Card key={a.id} className="rounded-2xl">
+                            <CardContent className="flex items-start justify-between gap-4 pt-6">
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold">{a.title}</h3>
+                                    <p className="mt-2 text-sm text-muted-foreground">{a.message}</p>
+                                    <p className="mt-3 text-xs text-muted-foreground">{a.created_at} · {a.created_by}</p>
+                                </div>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Edit3 className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(a)}><Trash2 className="h-4 w-4" /></Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="rounded-2xl sm:max-w-lg">
+                    <DialogHeader><DialogTitle>{editing ? 'Edit Announcement' : 'New Announcement'}</DialogTitle></DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <FormField label="Title" htmlFor="title" error={errors.title} required>
+                            <Input id="title" value={data.title} onChange={(e) => setData('title', e.target.value)} className="rounded-xl" placeholder="Announcement title" />
+                        </FormField>
+                        <FormField label="Message" htmlFor="message" error={errors.message} required>
+                            <textarea id="message" value={data.message} onChange={(e) => setData('message', e.target.value)} rows={5} className="flex w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" placeholder="Write your announcement..." />
+                        </FormField>
+                        {!editing && (
+                            <div className="flex items-center gap-2">
+                                <Checkbox id="notify_students" checked={data.notify_students} onCheckedChange={(c) => setData('notify_students', !!c)} />
+                                <Label htmlFor="notify_students" className="text-sm">Notify all students</Label>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>Cancel</Button>
+                            <Button type="submit" className="rounded-xl" disabled={processing}>{editing ? 'Save' : 'Publish'}</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        </ModuleShell>
+    );
+}
+
+Index.layout = setModuleLayout([{ title: 'Administration', href: '/admin/overview' }, { title: 'Announcements', href: '/admin/announcements' }]);

@@ -15,16 +15,24 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Create permissions
         $permissions = [
-            'manage users',
-            'edit articles',
-            'delete records',
             'view dashboard',
-
+            'manage users',
+            'manage students',
+            'manage sections',
+            'manage enrollments',
+            'manage billing',
+            'manage payments',
+            'view receipts',
+            'view announcements',
+            'manage announcements',
+            'view notifications',
+            'view student portal',
+            'view risk analytics',
+            'view school overview',
+            'delete records',
         ];
 
         foreach ($permissions as $permission) {
@@ -34,34 +42,46 @@ class RolesAndPermissionsSeeder extends Seeder
             ]);
         }
 
-        // Create roles and assign created permissions
-
-        // 1. Super-Admin
         $superAdminRole = Role::firstOrCreate([
             'name' => 'Super-Admin',
             'guard_name' => 'web',
         ]);
+        $superAdminRole->syncPermissions($permissions);
 
-        // 2. Manager
-        $managerRole = Role::firstOrCreate([
-            'name' => 'Manager',
+        $registrarRole = Role::firstOrCreate([
+            'name' => 'Registrar',
             'guard_name' => 'web',
         ]);
-        $managerRole->givePermissionTo([
-            'edit articles',
+        $registrarRole->syncPermissions([
             'view dashboard',
+            'manage students',
+            'manage sections',
+            'manage enrollments',
+            'view announcements',
         ]);
 
-        // 3. User
-        $userRole = Role::firstOrCreate([
-            'name' => 'User',
+        $cashierRole = Role::firstOrCreate([
+            'name' => 'Cashier',
             'guard_name' => 'web',
         ]);
-        $userRole->givePermissionTo([
+        $cashierRole->syncPermissions([
             'view dashboard',
+            'manage billing',
+            'manage payments',
+            'view receipts',
         ]);
 
-        // Seed Super-Admin User
+        $studentRole = Role::firstOrCreate([
+            'name' => 'Student',
+            'guard_name' => 'web',
+        ]);
+        $studentRole->syncPermissions([
+            'view dashboard',
+            'view student portal',
+            'view announcements',
+            'view notifications',
+        ]);
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
@@ -72,26 +92,34 @@ class RolesAndPermissionsSeeder extends Seeder
         );
         $admin->assignRole($superAdminRole);
 
-        // Seed Manager User
-        $manager = User::firstOrCreate(
-            ['email' => 'manager@example.com'],
+        $cashier = User::firstOrCreate(
+            ['email' => 'cashier@example.com'],
             [
-                'name' => 'Manager User',
+                'name' => 'Cashier User',
                 'password' => bcrypt('password'),
                 'email_verified_at' => now(),
             ]
         );
-        $manager->assignRole($managerRole);
+        $cashier->assignRole($cashierRole);
 
-        // Seed Standard User
-        $user = User::firstOrCreate(
-            ['email' => 'user@example.com'],
+        $student = User::firstOrCreate(
+            ['email' => 'student@example.com'],
             [
-                'name' => 'user@example.com', // fallback for name
+                'name' => 'Student User',
                 'password' => bcrypt('password'),
                 'email_verified_at' => now(),
             ]
         );
-        $user->assignRole($userRole);
+        $student->assignRole($studentRole);
+
+        $registrar = User::firstOrCreate(
+            ['email' => 'registrar@example.com'],
+            [
+                'name' => 'Registrar User',
+                'password' => bcrypt('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $registrar->assignRole($registrarRole);
     }
 }

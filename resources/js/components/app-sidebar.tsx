@@ -1,21 +1,29 @@
 import { Link, router } from '@inertiajs/react';
 import {
+    Banknote,
+    Bell,
     BookOpen,
+    BrainCircuit,
     ClipboardList,
-    FolderGit2,
+    CreditCard,
+    FileText,
+    GraduationCap,
+    History,
+    LayoutDashboard,
     LayoutGrid,
+    Layers,
     LogOut,
+    Megaphone,
     MessageSquare,
+    Receipt,
     ShieldAlert,
     Users,
 } from 'lucide-react';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavSecurity } from '@/components/nav-security';
 import { logout } from '@/routes';
-import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
     SidebarContent,
@@ -33,6 +41,7 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+        permission: 'view dashboard',
         iconClassName: 'text-blue-500 dark:text-blue-400',
     },
     {
@@ -49,17 +58,121 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const managerNavItems: NavItem[] = [
+const registrarNavItems: NavItem[] = [
     {
-        title: 'Edit Articles',
-        href: '/manager/articles',
+        title: 'Registrar Hub',
+        href: '/registrar',
+        icon: GraduationCap,
+        permission: 'manage students',
+        iconClassName: 'text-indigo-500 dark:text-indigo-400',
+    },
+    {
+        title: 'Students',
+        href: '/registrar/students',
+        icon: Users,
+        permission: 'manage students',
+        iconClassName: 'text-indigo-500 dark:text-indigo-400',
+    },
+    {
+        title: 'Sections',
+        href: '/registrar/sections',
+        icon: Layers,
+        permission: 'manage sections',
+        iconClassName: 'text-indigo-500 dark:text-indigo-400',
+    },
+    {
+        title: 'Enrollments',
+        href: '/registrar/enrollments',
         icon: BookOpen,
-        permission: 'edit articles',
+        permission: 'manage enrollments',
         iconClassName: 'text-indigo-500 dark:text-indigo-400',
     },
 ];
 
+const cashierNavItems: NavItem[] = [
+    {
+        title: 'Cashier Hub',
+        href: '/cashier',
+        icon: Banknote,
+        permission: 'manage billing',
+        iconClassName: 'text-emerald-500 dark:text-emerald-400',
+    },
+    {
+        title: 'Billing',
+        href: '/cashier/billing',
+        icon: FileText,
+        permission: 'manage billing',
+        iconClassName: 'text-emerald-500 dark:text-emerald-400',
+    },
+    {
+        title: 'Payments',
+        href: '/cashier/payments',
+        icon: CreditCard,
+        permission: 'manage payments',
+        iconClassName: 'text-emerald-500 dark:text-emerald-400',
+    },
+    {
+        title: 'Receipts',
+        href: '/cashier/receipts',
+        icon: Receipt,
+        permission: 'view receipts',
+        iconClassName: 'text-emerald-500 dark:text-emerald-400',
+    },
+    {
+        title: 'Payment History',
+        href: '/cashier/payment-history',
+        icon: History,
+        permission: 'manage payments',
+        iconClassName: 'text-emerald-500 dark:text-emerald-400',
+    },
+];
+
+const studentNavItems: NavItem[] = [
+    {
+        title: 'DILTrack',
+        href: '/student',
+        icon: GraduationCap,
+        permission: 'view student portal',
+        iconClassName: 'text-[#8B0000] dark:text-[#FFD700]',
+    },
+    {
+        title: 'My Enrollments',
+        href: '/student/enrollments',
+        icon: BookOpen,
+        permission: 'view student portal',
+        iconClassName: 'text-[#8B0000] dark:text-[#FFD700]',
+    },
+    {
+        title: 'My Billing',
+        href: '/student/billing',
+        icon: CreditCard,
+        permission: 'view student portal',
+        iconClassName: 'text-[#8B0000] dark:text-[#FFD700]',
+    },
+    {
+        title: 'Announcements',
+        href: '/student/announcements',
+        icon: Megaphone,
+        permission: 'view announcements',
+        iconClassName: 'text-[#8B0000] dark:text-[#FFD700]',
+    },
+    {
+        title: 'Notifications',
+        href: '/student/notifications',
+        icon: Bell,
+        permission: 'view notifications',
+        iconClassName: 'text-[#8B0000] dark:text-[#FFD700]',
+    },
+];
+
 const adminNavItems: NavItem[] = [
+    {
+        title: 'School Overview',
+        href: '/admin/overview',
+        icon: LayoutDashboard,
+        permission: 'view school overview',
+        iconClassName: 'text-violet-500 dark:text-violet-400',
+    },
     {
         title: 'User Management',
         href: '/admin/users',
@@ -74,20 +187,19 @@ const adminNavItems: NavItem[] = [
         role: 'Super-Admin',
         iconClassName: 'text-amber-500 dark:text-amber-400',
     },
-];
-
-const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
+        title: 'Announcements',
+        href: '/admin/announcements',
+        icon: Megaphone,
+        permission: 'manage announcements',
         iconClassName: 'text-violet-500 dark:text-violet-400',
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-        iconClassName: 'text-sky-500 dark:text-sky-400',
+        title: 'Risk Analytics',
+        href: '/admin/risk-analytics',
+        icon: BrainCircuit,
+        permission: 'view risk analytics',
+        iconClassName: 'text-rose-500 dark:text-rose-400',
     },
 ];
 
@@ -115,13 +227,14 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainNavItems} label="Platform" />
-                <NavMain items={managerNavItems} label="Management" />
+                <NavMain items={registrarNavItems} label="Registrar" />
+                <NavMain items={cashierNavItems} label="Cashier" />
+                <NavMain items={studentNavItems} label="DILTrack" />
                 <NavMain items={adminNavItems} label="Administration" />
                 <NavSecurity />
             </SidebarContent>
 
             <SidebarFooter>
-                {/* <NavFooter items={footerNavItems} className="mt-auto" /> */}
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
@@ -140,7 +253,6 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-                {/* <NavUser /> */}
             </SidebarFooter>
         </Sidebar>
     );
