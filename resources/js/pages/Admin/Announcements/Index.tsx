@@ -27,7 +27,7 @@ type Props = {
     stats: { total: number };
 };
 
-const emptyForm = { title: '', message: '', notify_students: true };
+const emptyForm = { title: '', message: '', notify_students: true, recipient_emails: '' };
 
 export default function Index({ announcements, stats }: Props) {
     const [open, setOpen] = useState(false);
@@ -37,7 +37,7 @@ export default function Index({ announcements, stats }: Props) {
     const openCreate = () => { setEditing(null); reset(); setOpen(true); };
     const openEdit = (announcement: Announcement) => {
         setEditing(announcement);
-        setData({ title: announcement.title, message: announcement.message, notify_students: false });
+        setData({ title: announcement.title, message: announcement.message, notify_students: false, recipient_emails: '' });
         setOpen(true);
     };
 
@@ -88,9 +88,22 @@ export default function Index({ announcements, stats }: Props) {
                             <textarea id="message" value={data.message} onChange={(e) => setData('message', e.target.value)} rows={5} className="flex w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" placeholder="Write your announcement..." />
                         </FormField>
                         {!editing && (
-                            <div className="flex items-center gap-2">
-                                <Checkbox id="notify_students" checked={data.notify_students} onCheckedChange={(c) => setData('notify_students', !!c)} />
-                                <Label htmlFor="notify_students" className="text-sm">Notify all students</Label>
+                            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4">
+                                <div className="flex items-center gap-2">
+                                    <Checkbox id="notify_students" checked={data.notify_students} onCheckedChange={(c) => setData('notify_students', !!c)} />
+                                    <Label htmlFor="notify_students" className="text-sm">Email all students</Label>
+                                </div>
+                                <FormField label="Or specific email addresses" htmlFor="recipient_emails" error={errors.recipient_emails}>
+                                    <textarea
+                                        id="recipient_emails"
+                                        value={data.recipient_emails}
+                                        onChange={(e) => setData('recipient_emails', e.target.value)}
+                                        rows={3}
+                                        className="flex w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                        placeholder="student1@school.edu, student2@school.edu"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Separate multiple emails with commas, spaces, or new lines.</p>
+                                </FormField>
                             </div>
                         )}
                         <DialogFooter>

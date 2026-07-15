@@ -129,7 +129,7 @@ const cashierNavItems: NavItem[] = [
 
 const studentNavItems: NavItem[] = [
     {
-        title: 'DILTrack',
+        title: 'Student Hub',
         href: '/student',
         icon: GraduationCap,
         permission: 'view student portal',
@@ -229,7 +229,7 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} label="Platform" />
                 <NavMain items={registrarNavItems} label="Registrar" />
                 <NavMain items={cashierNavItems} label="Cashier" />
-                <NavMain items={studentNavItems} label="DILTrack" />
+                <NavMain items={studentNavItems} label="Student" />
                 <NavMain items={adminNavItems} label="Administration" />
                 <NavSecurity />
             </SidebarContent>

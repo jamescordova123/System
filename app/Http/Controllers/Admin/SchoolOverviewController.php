@@ -12,7 +12,7 @@ use App\Models\RiskPrediction;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\UserNotification;
+use App\Services\AnnouncementDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -52,13 +52,22 @@ class SchoolOverviewController extends Controller
         ]);
     }
 
-    public function storeAnnouncement(Request $request)
+    public function storeAnnouncement(Request $request, AnnouncementDispatchService $dispatchService)
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
             'notify_students' => 'boolean',
+            'recipient_emails' => ['nullable', 'string', 'max:5000', function (string $attribute, mixed $value, \Closure $fail) {
+                foreach (AnnouncementDispatchService::parseEmailList(is_string($value) ? $value : null) as $email) {
+                    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $fail("Invalid email address: {$email}");
+                    }
+                }
+            }],
         ]);
+
+        $specificEmails = AnnouncementDispatchService::parseEmailList($validated['recipient_emails'] ?? null);
 
         $announcement = Announcement::create([
             'title' => $validated['title'],
@@ -66,18 +75,24 @@ class SchoolOverviewController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
-        if ($request->boolean('notify_students')) {
-            User::role('Student')->each(function (User $user) use ($announcement) {
-                UserNotification::create([
-                    'user_id' => $user->id,
-                    'announcement_id' => $announcement->id,
-                    'message' => $announcement->message,
-                    'is_read' => false,
-                ]);
-            });
+        $notifyAllStudents = $request->boolean('notify_students');
+        $shouldNotify = $notifyAllStudents || ! empty($specificEmails);
+
+        if ($shouldNotify) {
+            $result = $dispatchService->dispatch(
+                $announcement,
+                notifyAllStudents: $notifyAllStudents,
+                specificEmails: $specificEmails,
+            );
+
+            $message = $result['emails_queued'] > 0
+                ? "Announcement published. {$result['emails_queued']} email notification(s) queued."
+                : 'Announcement published successfully.';
+        } else {
+            $message = 'Announcement published successfully.';
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Announcement published successfully.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return redirect()->route('admin.school.announcements');
     }
