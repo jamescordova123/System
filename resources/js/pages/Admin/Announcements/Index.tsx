@@ -62,7 +62,7 @@ export default function Index({ announcements, stats }: Props) {
                 icon={Megaphone} 
                 accent="violet" 
                 actions={
-                    <Button className="rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/30 hover:from-violet-700 hover:to-purple-700" onClick={openCreate}>
+                    <Button className="rounded-xl bg-[#800000] font-semibold shadow-md shadow-[#800000]/20 hover:bg-[#5d0000] dark:bg-[#FFD700] dark:text-[#5d0000] dark:hover:bg-[#fff3b0]" onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" /> New Announcement
                     </Button>
                 } 

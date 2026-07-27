@@ -7,19 +7,25 @@ use App\Http\Controllers\Admin\SecurityController as AdminSecurityController;
 use App\Http\Controllers\Cashier\CashierController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnlineEnrollmentController;
+use App\Http\Controllers\PublicPropertyController;
+use App\Http\Controllers\Registrar\OnlineEnrollmentApplicationController;
 use App\Http\Controllers\Registrar\RegistrarController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Student\StudentPortalController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\PublicPropertyController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 Route::get('/buy', [PublicPropertyController::class, 'buy'])->name('public.buy');
 Route::get('/rent', [PublicPropertyController::class, 'rent'])->name('public.rent');
 Route::post('/properties/inquire', [PublicPropertyController::class, 'inquire'])->name('public.inquire');
+
+Route::get('/enroll', [OnlineEnrollmentController::class, 'create'])->name('enroll');
+Route::post('/enroll', [OnlineEnrollmentController::class, 'store'])->name('enroll.store');
+Route::get('/enroll/success', [OnlineEnrollmentController::class, 'success'])->name('enroll.success');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/search', [SearchController::class, 'search'])->name('api.search');
@@ -81,6 +87,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/enrollments', [RegistrarController::class, 'storeEnrollment'])->name('enrollments.store')->middleware('permission:manage enrollments');
         Route::put('/enrollments/{enrollment}', [RegistrarController::class, 'updateEnrollment'])->name('enrollments.update')->middleware('permission:manage enrollments');
         Route::delete('/enrollments/{enrollment}', [RegistrarController::class, 'destroyEnrollment'])->name('enrollments.destroy')->middleware('permission:manage enrollments');
+        Route::get('/online-applications', [OnlineEnrollmentApplicationController::class, 'index'])->name('online-applications')->middleware('permission:manage enrollments');
+        Route::get('/online-applications/{application}', [OnlineEnrollmentApplicationController::class, 'show'])->name('online-applications.show')->middleware('permission:manage enrollments');
+        Route::put('/online-applications/{application}/status', [OnlineEnrollmentApplicationController::class, 'updateStatus'])->name('online-applications.status')->middleware('permission:manage enrollments');
     });
 
     // Cashier Module

@@ -1,8 +1,7 @@
 import React from 'react';
 import PublicNavbar from '@/components/PublicNavbar';
 import { Link, usePage } from '@inertiajs/react';
-import { buy, rent } from '@/routes/public';
-import { Building2, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { login, register } from '@/routes';
 
 interface PublicLayoutProps {
     children: React.ReactNode;
@@ -11,7 +10,7 @@ interface PublicLayoutProps {
 export default function PublicLayout({ children }: PublicLayoutProps) {
     const { props } = usePage();
     const { branding } = props as any;
-    const appName = branding?.app_name || 'LaraEstate';
+    const appName = branding?.app_name || 'DILTrack';
 
     return (
         <div className="flex min-h-screen flex-col bg-white text-zinc-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
@@ -19,106 +18,46 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
             <PublicNavbar />
 
             {/* Main Content Area */}
-            <main className="flex-grow">
-                {children}
-            </main>
+            <main className="flex-grow">{children}</main>
 
-            {/* Premium, Interactive Footer */}
-            <footer className="border-t border-neutral-100 bg-neutral-50 text-zinc-600 transition-colors duration-300 dark:border-zinc-900 dark:bg-zinc-950 dark:text-zinc-400">
-                <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-                    <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-                        {/* Brand Column */}
-                        <div className="space-y-6 xl:col-span-1">
-                            <div className="flex items-center gap-2">
-                                <div className="flex aspect-square h-8 w-8 items-center justify-center rounded-lg bg-red-500 text-white dark:bg-red-600">
-                                    <Building2 className="h-5 w-5" />
-                                </div>
-                                <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-                                    {appName}
-                                </span>
+            {/* Minimal Institutional Footer */}
+            <footer className="border-t border-[#800000]/10 bg-[#fdf9f2] text-zinc-600 transition-colors duration-300 dark:border-[#FFD700]/10 dark:bg-zinc-950 dark:text-zinc-400">
+                <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                    <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:justify-between sm:text-left">
+                        <div className="flex items-center gap-3">
+                            <div className="flex aspect-square h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[#800000]/15 bg-white dark:border-[#FFD700]/15">
+                                <img
+                                    src="/images/diltc/crest.png"
+                                    alt={`${appName} crest`}
+                                    className="h-full w-full object-contain p-0.5"
+                                />
                             </div>
-                            <p className="text-sm max-w-xs text-neutral-500 dark:text-zinc-500">
-                                Offering the finest selection of luxury villas, penthouses, and modern apartments. Find your dream place with us.
-                            </p>
-                            <div className="flex gap-4">
-                                <a href="#" className="text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                    <Facebook className="h-5 w-5" />
-                                </a>
-                                <a href="#" className="text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                    <Twitter className="h-5 w-5" />
-                                </a>
-                                <a href="#" className="text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                    <Instagram className="h-5 w-5" />
-                                </a>
-                                <a href="#" className="text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                    <Linkedin className="h-5 w-5" />
-                                </a>
+                            <div className="text-left">
+                                <p className="text-sm font-bold tracking-tight text-[#800000] dark:text-[#FFD700]">
+                                    {appName}
+                                </p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Davao del Sur Institute of Languages and Technological College Inc.
+                                </p>
                             </div>
                         </div>
 
-                        {/* Navigation Columns */}
-                        <div className="mt-12 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
-                            <div className="md:grid md:grid-cols-2 md:gap-8">
-                                <div>
-                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-300">
-                                        Properties
-                                    </h3>
-                                    <ul role="list" className="mt-4 space-y-3">
-                                        <li>
-                                            <Link href={buy()} className="text-sm hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                                Buy Listing
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link href={rent()} className="text-sm hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                                Rent Listing
-                                            </Link>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="mt-12 md:mt-0">
-                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-300">
-                                        Company
-                                    </h3>
-                                    <ul role="list" className="mt-4 space-y-3">
-                                        <li>
-                                            <a href="#" className="text-sm hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                                About Us
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href="#" className="text-sm hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                                                Careers
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-300">
-                                    Contact Info
-                                </h3>
-                                <ul role="list" className="mt-4 space-y-3">
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <MapPin className="h-4 w-4 shrink-0 text-red-500" />
-                                        <span>742 Evergreen Terrace, Springfield</span>
-                                    </li>
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <Phone className="h-4 w-4 shrink-0 text-red-500" />
-                                        <span>+1 (555) 019-2834</span>
-                                    </li>
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <Mail className="h-4 w-4 shrink-0 text-red-500" />
-                                        <span>info@laraestate.com</span>
-                                    </li>
-                                </ul>
-                            </div>
+                        <div className="flex items-center gap-6 text-sm font-medium">
+                            <Link href="/enroll" className="transition-colors hover:text-[#800000] dark:hover:text-[#FFD700]">
+                                Enroll Online
+                            </Link>
+                            <Link href={login()} className="transition-colors hover:text-[#800000] dark:hover:text-[#FFD700]">
+                                Log in
+                            </Link>
+                            <Link href={register()} className="transition-colors hover:text-[#800000] dark:hover:text-[#FFD700]">
+                                Register
+                            </Link>
                         </div>
                     </div>
 
-                    <div className="mt-12 border-t border-neutral-100 pt-8 dark:border-zinc-900">
-                        <p className="text-xs text-neutral-400 dark:text-zinc-500 text-center">
-                            &copy; {new Date().getFullYear()} {appName}. All rights reserved. Built with Laravel 13, React 19 & Reverb.
+                    <div className="mt-8 border-t border-[#800000]/10 pt-6 dark:border-[#FFD700]/10">
+                        <p className="text-center text-xs text-zinc-400 dark:text-zinc-500">
+                            &copy; {new Date().getFullYear()} {appName}. All rights reserved.
                         </p>
                     </div>
                 </div>

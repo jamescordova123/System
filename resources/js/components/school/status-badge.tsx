@@ -21,6 +21,10 @@ const statusStyles: Record<string, string> = {
     high: 'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:text-rose-400',
     read: 'bg-muted text-muted-foreground border-border',
     unread: 'bg-blue-500/10 text-blue-700 border-blue-500/20 dark:text-blue-400',
+    pending: 'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400',
+    reviewed: 'bg-[#800000]/10 text-[#800000] border-[#800000]/20 dark:text-[#FFD700]',
+    approved: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400',
+    rejected: 'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:text-rose-400',
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

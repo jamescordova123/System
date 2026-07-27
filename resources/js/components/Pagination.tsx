@@ -74,8 +74,8 @@ export function Pagination({ links, from, to, total }: PaginationProps) {
                             preserveState
                             className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                                 link.active
-                                    ? 'border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/95'
-                                    : 'border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    ? 'border-[#800000] bg-[#800000] text-white shadow-sm hover:bg-[#5d0000] dark:border-[#FFD700] dark:bg-[#FFD700] dark:text-[#5d0000] dark:hover:bg-[#fff3b0]'
+                                    : 'border-border/50 bg-card text-muted-foreground hover:border-[#800000]/20 hover:bg-[#800000]/5 hover:text-[#800000] dark:hover:text-[#FFD700]'
                             }`}
                         >
                             {isPrev && <ChevronLeft className="h-3.5 w-3.5" />}
