@@ -23,7 +23,7 @@ export default function Index({ announcements }: Props) {
             ) : (
                 <div className="grid gap-4">
                     {announcements.map((a) => (
-                        <Card key={a.id} className="rounded-2xl border-l-4 border-l-blue-500">
+                        <Card key={a.id} className="rounded-2xl border-l-4 border-l-[#800000] dilt-card-shadow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
                             <CardContent className="pt-6">
                                 <h3 className="text-lg font-semibold">{a.title}</h3>
                                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{a.message}</p>

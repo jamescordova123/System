@@ -134,9 +134,9 @@ export function NotificationDropdown() {
                     className="group relative h-9 w-9 cursor-pointer"
                     aria-label="Notifications"
                 >
-                    <Bell className="!size-5 opacity-80 transition-transform duration-200 group-hover:rotate-12 group-hover:opacity-100" />
+                    <Bell className="!size-5 text-[#800000]/80 transition-transform duration-200 group-hover:rotate-12 group-hover:text-[#800000] dark:text-[#FFD700]/80 dark:group-hover:text-[#FFD700]" />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 animate-pulse items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-2 ring-background">
+                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 animate-pulse items-center justify-center rounded-full bg-[#FFD700] text-[10px] font-bold text-[#5d0000] ring-2 ring-background">
                             {unreadCount}
                         </span>
                     )}
@@ -145,13 +145,13 @@ export function NotificationDropdown() {
 
             <DropdownMenuContent className="w-80 p-0 sm:w-96" align="end">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-sidebar-border bg-sidebar/50 p-3 px-4">
+                <div className="flex items-center justify-between border-b border-[#800000]/10 bg-gradient-to-r from-[#800000]/5 to-[#FFD700]/10 p-3 px-4">
                     <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold">
+                        <span className="text-sm font-semibold text-[#800000] dark:text-[#FFD700]">
                             Notifications
                         </span>
                         {unreadCount > 0 && (
-                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                            <span className="rounded-full bg-[#FFD700]/30 px-2 py-0.5 text-xs font-semibold text-[#5d0000] dark:bg-[#FFD700]/20 dark:text-[#FFD700]">
                                 {unreadCount} new
                             </span>
                         )}
@@ -160,7 +160,7 @@ export function NotificationDropdown() {
                         <button
                             onClick={handleMarkAllAsRead}
                             disabled={processing}
-                            className="flex cursor-pointer items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 focus:outline-hidden disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                            className="flex cursor-pointer items-center gap-1 text-xs font-medium text-[#800000] hover:text-[#5d0000] focus:outline-hidden disabled:opacity-50 dark:text-[#FFD700] dark:hover:text-[#fff3b0]"
                         >
                             <CheckCheck className="h-3.5 w-3.5" />
                             Mark all as read
@@ -231,7 +231,7 @@ export function NotificationDropdown() {
                                                     {data.currency}
                                                 </span>
                                             ) : (
-                                                <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                                                <span className="rounded bg-[#800000]/8 px-1.5 py-0.5 text-[10px] font-semibold text-[#800000] dark:bg-[#FFD700]/15 dark:text-[#FFD700]">
                                                     Action Center
                                                 </span>
                                             )}

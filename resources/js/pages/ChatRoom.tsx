@@ -177,15 +177,15 @@ export default function ChatRoom({
                 title={receiver ? `Chat with ${receiver.name}` : 'Chat System'}
             />
 
-            <div className="m-5 flex h-[650px] max-h-[calc(100dvh-8rem)] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-background dark:border-sidebar-border">
+            <div className="m-5 flex h-[650px] max-h-[calc(100dvh-8rem)] flex-1 overflow-hidden rounded-2xl border border-[#800000]/15 bg-background dilt-card-shadow dark:border-[#800000]/25">
                 {/* 1. CONTACTS LIST (SIDEBAR) */}
                 <div
                     className={`${
                         mobileShowSidebar ? 'flex' : 'hidden'
                     } h-full w-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border/70 bg-card md:flex md:w-80 dark:border-sidebar-border`}
                 >
-                    <div className="border-b border-sidebar-border/70 p-4 dark:border-sidebar-border">
-                        <h2 className="mb-3 text-lg font-bold tracking-tight">
+                    <div className="border-b border-[#800000]/10 bg-gradient-to-r from-[#800000]/5 to-transparent p-4 dark:from-[#800000]/15">
+                        <h2 className="mb-3 text-lg font-bold tracking-tight text-[#800000] dark:text-[#FFD700]">
                             Chats
                         </h2>
                         <div className="relative">
@@ -262,7 +262,7 @@ export default function ChatRoom({
                     {receiver ? (
                         <>
                             {/* CHAT HEADER */}
-                            <div className="flex items-center gap-3 border-b border-sidebar-border/70 bg-card px-4 py-3 dark:border-sidebar-border">
+                            <div className="flex items-center gap-3 border-b border-[#800000]/10 bg-card px-4 py-3 dark:border-[#800000]/20">
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -352,7 +352,7 @@ export default function ChatRoom({
                             {/* CHAT INPUT BAR */}
                             <form
                                 onSubmit={handleSendMessage}
-                                className="flex items-center gap-2 border-t border-sidebar-border/70 bg-card p-3 dark:border-sidebar-border"
+                                className="flex items-center gap-2 border-t border-[#800000]/10 bg-card p-3 dark:border-[#800000]/20"
                             >
                                 <Input
                                     placeholder={`Message ${receiver.name}...`}
@@ -369,7 +369,7 @@ export default function ChatRoom({
                                     type="submit"
                                     size="icon"
                                     disabled={!data.body.trim() || processing}
-                                    className="shrink-0"
+                                    className="shrink-0 bg-[#800000] text-white hover:bg-[#5d0000] dark:bg-[#FFD700] dark:text-[#5d0000] dark:hover:bg-[#fff3b0]"
                                 >
                                     <SendHorizontal className="h-4.5 w-4.5" />
                                 </Button>
