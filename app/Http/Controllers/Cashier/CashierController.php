@@ -109,9 +109,14 @@ class CashierController extends Controller
                 ->latest()
                 ->get()
                 ->map(fn (Payment $p) => $this->formatPayment($p)),
+            'histories' => PaymentHistory::with('student')
+                ->latest()
+                ->get()
+                ->map(fn (PaymentHistory $h) => $this->formatPaymentHistory($h)),
             'stats' => [
                 'total' => Payment::count(),
                 'collected' => number_format((float) Payment::sum('amount_paid'), 2),
+                'students_tracked' => PaymentHistory::count(),
             ],
             'billingOptions' => BillingStatement::with('student')
                 ->whereIn('status', ['unpaid', 'partial'])
@@ -176,37 +181,22 @@ class CashierController extends Controller
     public function receipts()
     {
         return Inertia::render('Cashier/Receipts/Index', [
-            'receipts' => Receipt::with('payment.billingStatement.student')
+            'receipts' => Receipt::with('payment.billingStatement.student', 'payment.receivedBy')
                 ->latest()
                 ->get()
                 ->map(fn (Receipt $r) => [
                     'id' => $r->id,
                     'receipt_number' => $r->receipt_number,
                     'student_name' => trim("{$r->payment?->billingStatement?->student?->first_name} {$r->payment?->billingStatement?->student?->last_name}"),
+                    'student_number' => $r->payment?->billingStatement?->student?->student_number,
                     'amount' => number_format((float) ($r->payment?->amount_paid ?? 0), 2),
+                    'payment_method' => $r->payment?->payment_method?->value,
+                    'received_by' => $r->payment?->receivedBy?->name,
+                    'billing_total' => number_format((float) ($r->payment?->billingStatement?->total_amount ?? 0), 2),
                     'issued_at' => $r->issued_date?->format('M d, Y h:i A'),
                 ]),
             'stats' => [
                 'total' => Receipt::count(),
-            ],
-        ]);
-    }
-
-    public function paymentHistory()
-    {
-        return Inertia::render('Cashier/PaymentHistory/Index', [
-            'histories' => PaymentHistory::with('student')
-                ->latest()
-                ->get()
-                ->map(fn (PaymentHistory $h) => [
-                    'id' => $h->id,
-                    'student_name' => trim("{$h->student?->first_name} {$h->student?->last_name}"),
-                    'student_number' => $h->student?->student_number,
-                    'total_paid' => number_format((float) $h->total_paid, 2),
-                    'last_payment_date' => $h->last_payment_date?->format('M d, Y'),
-                ]),
-            'stats' => [
-                'total' => PaymentHistory::count(),
             ],
         ]);
     }
@@ -258,6 +248,18 @@ class CashierController extends Controller
             'payment_method' => $p->payment_method->value,
             'payment_date' => $p->payment_date->format('M d, Y'),
             'received_by' => $p->receivedBy?->name,
+        ];
+    }
+
+    private function formatPaymentHistory(PaymentHistory $h): array
+    {
+        return [
+            'id' => $h->id,
+            'student_name' => trim("{$h->student?->first_name} {$h->student?->last_name}"),
+            'student_number' => $h->student?->student_number,
+            'total_paid' => number_format((float) $h->total_paid, 2),
+            'total_balance' => number_format((float) $h->total_balance, 2),
+            'last_payment_date' => $h->last_payment_date?->format('M d, Y'),
         ];
     }
 }

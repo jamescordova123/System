@@ -189,3 +189,25 @@
         display: none;
     }
 }
+
+/* Isolate a single #printable-receipt element when printing, hiding the rest
+   of the app shell (sidebar, tables, etc). Uses `fixed` (not `absolute`) so it
+   anchors to the page viewport regardless of any transformed ancestors. */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    #printable-receipt,
+    #printable-receipt * {
+        visibility: visible;
+    }
+
+    #printable-receipt {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        margin: 0;
+        box-shadow: none;
+    }
+}

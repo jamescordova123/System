@@ -30,8 +30,8 @@ Route::get('/enroll/success', [OnlineEnrollmentController::class, 'success'])->n
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/search', [SearchController::class, 'search'])->name('api.search');
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
-    Route::resource('roles', RoleController::class);
-    Route::resource('admin/users', UserController::class);
+    Route::resource('roles', RoleController::class)->middleware('permission:manage roles');
+    Route::resource('admin/users', UserController::class)->middleware('permission:manage users');
     Route::post('admin/impersonate/leave', [ImpersonateController::class, 'leave'])->name('admin.impersonate.leave');
     Route::post('admin/impersonate/{user}', [ImpersonateController::class, 'impersonate'])->name('admin.impersonate');
 
@@ -102,7 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payments', [CashierController::class, 'payments'])->name('payments')->middleware('permission:manage payments');
         Route::post('/payments', [CashierController::class, 'storePayment'])->name('payments.store')->middleware('permission:manage payments');
         Route::get('/receipts', [CashierController::class, 'receipts'])->name('receipts')->middleware('permission:view receipts');
-        Route::get('/payment-history', [CashierController::class, 'paymentHistory'])->name('payment-history')->middleware('permission:manage payments');
+        Route::redirect('/payment-history', '/cashier/payments')->name('payment-history');
     });
 
     // Student Portal

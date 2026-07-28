@@ -45,9 +45,12 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureDefaults();
 
-        // Implicitly grant privileged roles all permissions
+        // Implicitly grant privileged roles all permissions.
+        // Note: the "Admin" role is intentionally excluded here — it is a
+        // scoped administrator role limited to specific permissions
+        // (see RolesAndPermissionsSeeder), not a full-access bypass.
         Gate::before(function ($user, $ability) {
-            return $user->hasRole(['Admin', 'Super-Admin', 'Developer']) ? true : null;
+            return $user->hasRole(['Super-Admin', 'Developer']) ? true : null;
         });
 
         $this->registerSecurityListeners();

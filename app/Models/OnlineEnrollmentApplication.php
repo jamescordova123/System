@@ -83,6 +83,7 @@ class OnlineEnrollmentApplication extends Model
         'registrar_notes',
         'reviewed_by',
         'reviewed_at',
+        'student_id',
     ];
 
     protected function casts(): array
@@ -102,6 +103,20 @@ class OnlineEnrollmentApplication extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class);
+    }
+
+    /**
+     * Once an application has been finalized (approved or rejected), the
+     * registrar can no longer change its status.
+     */
+    public function isFinalized(): bool
+    {
+        return in_array($this->application_status, ['approved', 'rejected'], true);
     }
 
     public function getFullNameAttribute(): string

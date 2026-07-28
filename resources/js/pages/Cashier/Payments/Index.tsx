@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { CreditCard, Plus } from 'lucide-react';
+import { CreditCard, History, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '@/components/school/empty-state';
 import { FormField } from '@/components/school/form-field';
@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type BillingOption = { value: number; label: string; total_amount: number };
@@ -26,9 +27,19 @@ type Payment = {
     received_by: string | null;
 };
 
+type HistoryRow = {
+    id: number;
+    student_name: string;
+    student_number: string | null;
+    total_paid: string;
+    total_balance: string;
+    last_payment_date: string | null;
+};
+
 type Props = {
     payments: Payment[];
-    stats: { total: number; collected: string };
+    histories: HistoryRow[];
+    stats: { total: number; collected: string; students_tracked: number };
     billingOptions: BillingOption[];
 };
 
@@ -39,7 +50,7 @@ const emptyForm = {
     payment_method: 'cash',
 };
 
-export default function Index({ payments, stats, billingOptions }: Props) {
+export default function Index({ payments, histories, stats, billingOptions }: Props) {
     const [open, setOpen] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm(emptyForm);
 
@@ -56,46 +67,96 @@ export default function Index({ payments, stats, billingOptions }: Props) {
     return (
         <ModuleShell title="Payments" breadcrumbs={[{ title: 'Cashier', href: '/cashier' }, { title: 'Payments', href: '/cashier/payments' }]}>
             <PageHeader
-                title="Payment Transactions"
-                description="Record payments and auto-generate receipts with billing status updates."
+                title="Payments & History"
+                description="Record payments, auto-generate receipts, and track each student's payment history in one place."
                 icon={CreditCard}
                 accent="emerald"
                 actions={<Button className="rounded-xl" onClick={() => { reset(); setOpen(true); }}><Plus className="mr-2 h-4 w-4" /> Record Payment</Button>}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
                 <StatCard label="Total Payments" value={stats.total} icon={CreditCard} accent="emerald" />
                 <StatCard label="Total Collected" value={`₱${stats.collected}`} icon={CreditCard} accent="blue" trend="up" />
+                <StatCard label="Students Tracked" value={stats.students_tracked} icon={Users} accent="gold" />
             </div>
-            <Card className="rounded-2xl">
-                <CardContent className="pt-6">
-                    {payments.length === 0 ? (
-                        <EmptyState icon={CreditCard} title="No payments recorded" description="Payment transactions will be listed here." action={<Button onClick={() => setOpen(true)} className="rounded-xl">Record Payment</Button>} />
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Method</TableHead>
-                                    <TableHead>Received By</TableHead>
-                                    <TableHead>Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {payments.map((p) => (
-                                    <TableRow key={p.id}>
-                                        <TableCell className="font-medium">{p.student_name}</TableCell>
-                                        <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">₱{p.amount_paid}</TableCell>
-                                        <TableCell><Badge variant="secondary" className="capitalize rounded-lg">{p.payment_method.replace(/_/g, ' ')}</Badge></TableCell>
-                                        <TableCell>{p.received_by ?? '—'}</TableCell>
-                                        <TableCell>{p.payment_date}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+
+            <Tabs defaultValue="transactions" className="w-full">
+                <TabsList>
+                    <TabsTrigger value="transactions">
+                        <CreditCard className="mr-1.5 h-4 w-4" /> Transactions
+                    </TabsTrigger>
+                    <TabsTrigger value="history">
+                        <History className="mr-1.5 h-4 w-4" /> Payment History
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="transactions">
+                    <Card className="rounded-2xl">
+                        <CardContent className="pt-6">
+                            {payments.length === 0 ? (
+                                <EmptyState icon={CreditCard} title="No payments recorded" description="Payment transactions will be listed here." action={<Button onClick={() => setOpen(true)} className="rounded-xl">Record Payment</Button>} />
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Student</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Method</TableHead>
+                                            <TableHead>Received By</TableHead>
+                                            <TableHead>Date</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {payments.map((p) => (
+                                            <TableRow key={p.id}>
+                                                <TableCell className="font-medium">{p.student_name}</TableCell>
+                                                <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">₱{p.amount_paid}</TableCell>
+                                                <TableCell><Badge variant="secondary" className="capitalize rounded-lg">{p.payment_method.replace(/_/g, ' ')}</Badge></TableCell>
+                                                <TableCell>{p.received_by ?? '—'}</TableCell>
+                                                <TableCell>{p.payment_date}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="history">
+                    <Card className="rounded-2xl">
+                        <CardContent className="pt-6">
+                            {histories.length === 0 ? (
+                                <EmptyState icon={History} title="No payment history" description="Student payment summaries will appear here once payments are recorded." />
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Student</TableHead>
+                                            <TableHead>Total Paid</TableHead>
+                                            <TableHead>Balance</TableHead>
+                                            <TableHead>Last Payment</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {histories.map((h) => (
+                                            <TableRow key={h.id}>
+                                                <TableCell>
+                                                    <div className="font-medium">{h.student_name}</div>
+                                                    <div className="text-xs text-muted-foreground">{h.student_number}</div>
+                                                </TableCell>
+                                                <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">₱{h.total_paid}</TableCell>
+                                                <TableCell className={h.total_balance !== '0.00' ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>₱{h.total_balance}</TableCell>
+                                                <TableCell>{h.last_payment_date ?? '—'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="rounded-2xl sm:max-w-md">
                     <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>

@@ -30,6 +30,9 @@ export function NavMain({
         if (item.permissions && !hasAnyPermission(item.permissions)) {
             return false;
         }
+        if (item.hideForRoles && item.hideForRoles.some((role) => hasRole(role))) {
+            return false;
+        }
         return true;
     });
 
