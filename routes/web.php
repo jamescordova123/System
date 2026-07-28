@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ImpersonateController;
 use App\Http\Controllers\Admin\SchoolOverviewController;
 use App\Http\Controllers\Admin\SecurityController as AdminSecurityController;
 use App\Http\Controllers\Cashier\CashierController;
+use App\Http\Controllers\Cashier\StudentFeeController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnlineEnrollmentController;
@@ -90,18 +91,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/online-applications', [OnlineEnrollmentApplicationController::class, 'index'])->name('online-applications')->middleware('permission:manage enrollments');
         Route::get('/online-applications/{application}', [OnlineEnrollmentApplicationController::class, 'show'])->name('online-applications.show')->middleware('permission:manage enrollments');
         Route::put('/online-applications/{application}/status', [OnlineEnrollmentApplicationController::class, 'updateStatus'])->name('online-applications.status')->middleware('permission:manage enrollments');
+        Route::put('/online-applications/{application}/section', [OnlineEnrollmentApplicationController::class, 'assignSection'])->name('online-applications.assign-section')->middleware('permission:manage enrollments');
     });
 
     // Cashier Module
     Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/', [CashierController::class, 'dashboard'])->name('dashboard')->middleware('permission:manage billing');
-        Route::get('/billing', [CashierController::class, 'billing'])->name('billing')->middleware('permission:manage billing');
-        Route::post('/billing', [CashierController::class, 'storeBilling'])->name('billing.store')->middleware('permission:manage billing');
-        Route::put('/billing/{billing}', [CashierController::class, 'updateBilling'])->name('billing.update')->middleware('permission:manage billing');
-        Route::delete('/billing/{billing}', [CashierController::class, 'destroyBilling'])->name('billing.destroy')->middleware('permission:manage billing');
+        Route::get('/student-fees', [StudentFeeController::class, 'index'])->name('student-fees')->middleware('permission:manage billing');
+        Route::post('/student-fees', [StudentFeeController::class, 'store'])->name('student-fees.store')->middleware('permission:manage billing');
+        Route::get('/student-fees/{billing}', [StudentFeeController::class, 'show'])->name('student-fees.show')->middleware('permission:manage billing');
+        Route::put('/student-fees/{billing}', [StudentFeeController::class, 'update'])->name('student-fees.update')->middleware('permission:manage billing');
+        Route::delete('/student-fees/{billing}', [StudentFeeController::class, 'destroy'])->name('student-fees.destroy')->middleware('permission:manage billing');
+        Route::post('/student-fees/{billing}/items/{item}/pay', [StudentFeeController::class, 'payItem'])->name('student-fees.items.pay')->middleware('permission:manage payments');
+        Route::put('/student-fees/{billing}/items/{item}', [StudentFeeController::class, 'updateItem'])->name('student-fees.items.update')->middleware('permission:manage billing');
+        Route::post('/fee-catalog', [StudentFeeController::class, 'storeCatalogItem'])->name('fee-catalog.store')->middleware('permission:manage billing');
+        Route::put('/fee-catalog/{item}', [StudentFeeController::class, 'updateCatalogItem'])->name('fee-catalog.update')->middleware('permission:manage billing');
         Route::get('/payments', [CashierController::class, 'payments'])->name('payments')->middleware('permission:manage payments');
         Route::post('/payments', [CashierController::class, 'storePayment'])->name('payments.store')->middleware('permission:manage payments');
         Route::get('/receipts', [CashierController::class, 'receipts'])->name('receipts')->middleware('permission:view receipts');
+        Route::get('/risk-analytics', [CashierController::class, 'riskAnalytics'])->name('risk-analytics')->middleware('permission:manage billing');
         Route::redirect('/payment-history', '/cashier/payments')->name('payment-history');
     });
 
@@ -109,8 +117,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('student')->name('student.')->group(function () {
         Route::get('/', [StudentPortalController::class, 'dashboard'])->name('dashboard')->middleware('permission:view student portal');
         Route::get('/enrollments', [StudentPortalController::class, 'enrollments'])->name('enrollments')->middleware('permission:view student portal');
+        Route::get('/profile', [StudentPortalController::class, 'profile'])->name('profile')->middleware('permission:view student portal');
+        Route::put('/profile', [StudentPortalController::class, 'updateProfile'])->name('profile.update')->middleware('permission:view student portal');
         Route::get('/billing', [StudentPortalController::class, 'billing'])->name('billing')->middleware('permission:view student portal');
-        Route::get('/announcements', [StudentPortalController::class, 'announcements'])->name('announcements')->middleware('permission:view announcements');
+        Route::get('/transactions', [StudentPortalController::class, 'transactions'])->name('transactions')->middleware('permission:view student portal');
+        // Announcements now live inside the Notifications page.
+        Route::redirect('/announcements', '/student/notifications')->name('announcements');
         Route::get('/notifications', [StudentPortalController::class, 'notifications'])->name('notifications')->middleware('permission:view notifications');
         Route::post('/notifications/read-all', [StudentPortalController::class, 'markAllNotificationsRead'])->name('notifications.read-all')->middleware('permission:view notifications');
         Route::post('/notifications/{notification}/read', [StudentPortalController::class, 'markNotificationRead'])->name('notifications.read')->middleware('permission:view notifications');

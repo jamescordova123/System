@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 import AppLogoDynamic from '@/components/app-logo-dynamic';
 import { Menu, X, Sun, Moon, ArrowRight } from 'lucide-react';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -68,15 +68,9 @@ export default function PublicNavbar() {
                                 </Link>
                                 <Link
                                     href={login()}
-                                    className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-                                >
-                                    Log in
-                                </Link>
-                                <Link
-                                    href={register()}
                                     className="inline-flex items-center justify-center rounded-lg bg-[#800000] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[#800000]/20 transition-colors hover:bg-[#5d0000]"
                                 >
-                                    Register
+                                    Log in
                                 </Link>
                             </div>
                         )}
@@ -130,22 +124,13 @@ export default function PublicNavbar() {
                                 Dashboard
                             </Link>
                         ) : (
-                            <>
-                                <Link
-                                    href={login()}
-                                    onClick={() => setMobileOpen(false)}
-                                    className="flex items-center justify-center rounded-lg border border-[#800000]/15 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:bg-[#800000]/5 dark:border-[#FFD700]/15 dark:text-zinc-300"
-                                >
-                                    Log in
-                                </Link>
-                                <Link
-                                    href={register()}
-                                    onClick={() => setMobileOpen(false)}
-                                    className="flex items-center justify-center rounded-lg bg-[#800000] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5d0000]"
-                                >
-                                    Register
-                                </Link>
-                            </>
+                            <Link
+                                href={login()}
+                                onClick={() => setMobileOpen(false)}
+                                className="col-span-2 flex items-center justify-center rounded-lg bg-[#800000] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5d0000]"
+                            >
+                                Log in
+                            </Link>
                         )}
                     </div>
                 </div>

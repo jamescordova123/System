@@ -1,7 +1,7 @@
 import React from 'react';
 import PublicNavbar from '@/components/PublicNavbar';
 import { Link, usePage } from '@inertiajs/react';
-import { login, register } from '@/routes';
+import { login } from '@/routes';
 
 interface PublicLayoutProps {
     children: React.ReactNode;
@@ -48,9 +48,6 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                             </Link>
                             <Link href={login()} className="transition-colors hover:text-[#800000] dark:hover:text-[#FFD700]">
                                 Log in
-                            </Link>
-                            <Link href={register()} className="transition-colors hover:text-[#800000] dark:hover:text-[#FFD700]">
-                                Register
                             </Link>
                         </div>
                     </div>

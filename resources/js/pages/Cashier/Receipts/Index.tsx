@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import { Printer, Receipt as ReceiptIcon } from 'lucide-react';
 import { EmptyState } from '@/components/school/empty-state';
+import { ListToolbar } from '@/components/school/list-toolbar';
 import { ModuleShell, setModuleLayout } from '@/components/school/module-shell';
 import { PageHeader } from '@/components/school/page-header';
 import { StatCard } from '@/components/school/stat-card';
@@ -30,6 +31,32 @@ export default function Index({ receipts, stats }: Props) {
     const { branding } = usePage().props as { branding?: { app_name?: string } };
     const appName = branding?.app_name || 'DILTrack';
     const [printing, setPrinting] = useState<ReceiptRow | null>(null);
+    const [search, setSearch] = useState('');
+    const [methodFilter, setMethodFilter] = useState('all');
+
+    const methodOptions = useMemo(() => {
+        const methods = Array.from(
+            new Set(receipts.map((r) => r.payment_method).filter((m): m is string => Boolean(m))),
+        ).sort();
+        return methods.map((m) => ({
+            value: m,
+            label: m.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        }));
+    }, [receipts]);
+
+    const filtered = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return receipts.filter((r) => {
+            if (methodFilter !== 'all' && r.payment_method !== methodFilter) return false;
+            if (!term) return true;
+            return (
+                r.receipt_number.toLowerCase().includes(term) ||
+                r.student_name.toLowerCase().includes(term) ||
+                (r.student_number ?? '').toLowerCase().includes(term) ||
+                (r.received_by ?? '').toLowerCase().includes(term)
+            );
+        });
+    }, [receipts, search, methodFilter]);
 
     // Wait a tick after `printing` is set so the hidden receipt markup is
     // actually in the DOM before invoking the browser's print dialog.
@@ -51,8 +78,44 @@ export default function Index({ receipts, stats }: Props) {
             <StatCard label="Total Receipts" value={stats.total} icon={ReceiptIcon} accent="emerald" />
             <Card className="rounded-2xl">
                 <CardContent className="pt-6">
-                    {receipts.length === 0 ? (
-                        <EmptyState icon={ReceiptIcon} title="No receipts issued" description="Receipts are generated when payments are recorded." />
+                    <ListToolbar
+                        search={search}
+                        onSearchChange={setSearch}
+                        searchPlaceholder="Search by receipt #, student, or cashier…"
+                        resultCount={filtered.length}
+                        totalCount={receipts.length}
+                        onClear={() => {
+                            setSearch('');
+                            setMethodFilter('all');
+                        }}
+                        filters={
+                            methodOptions.length > 0
+                                ? [
+                                      {
+                                          key: 'method',
+                                          label: 'Method',
+                                          value: methodFilter,
+                                          onChange: setMethodFilter,
+                                          widthClassName: 'w-[150px]',
+                                          options: [
+                                              { value: 'all', label: 'All methods' },
+                                              ...methodOptions,
+                                          ],
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
+                    {filtered.length === 0 ? (
+                        <EmptyState
+                            icon={ReceiptIcon}
+                            title={receipts.length === 0 ? 'No receipts issued' : 'No results'}
+                            description={
+                                receipts.length === 0
+                                    ? 'Receipts are generated when payments are recorded.'
+                                    : 'Try a different search or clear filters.'
+                            }
+                        />
                     ) : (
                         <Table>
                             <TableHeader>
@@ -65,7 +128,7 @@ export default function Index({ receipts, stats }: Props) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {receipts.map((r) => (
+                                {filtered.map((r) => (
                                     <TableRow key={r.id}>
                                         <TableCell className="font-mono text-sm">{r.receipt_number}</TableCell>
                                         <TableCell className="font-medium">{r.student_name}</TableCell>

@@ -2,26 +2,28 @@
 
 namespace App\Models;
 
-use App\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
+ * One assessed fee for one student — replaces the AR#_X / X_Fee column
+ * pairs from the legacy per-grade fee sheets. Carries its own AR number
+ * and paid amount so each fee can be settled and audited individually.
+ *
  * @property int $id
  * @property int $billing_id
- * @property int|null $billing_line_item_id
+ * @property int $fee_catalog_item_id
+ * @property string|null $ar_number
+ * @property string $amount_due
  * @property string $amount_paid
- * @property Carbon $payment_date
- * @property PaymentMethod $payment_method
- * @property int $received_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-class Payment extends Model
+class BillingLineItem extends Model
 {
     use SoftDeletes;
 
@@ -30,11 +32,10 @@ class Payment extends Model
      */
     protected $fillable = [
         'billing_id',
-        'billing_line_item_id',
+        'fee_catalog_item_id',
+        'ar_number',
+        'amount_due',
         'amount_paid',
-        'payment_date',
-        'payment_method',
-        'received_by',
     ];
 
     /**
@@ -43,9 +44,8 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
+            'amount_due' => 'decimal:2',
             'amount_paid' => 'decimal:2',
-            'payment_date' => 'date',
-            'payment_method' => PaymentMethod::class,
         ];
     }
 
@@ -54,18 +54,18 @@ class Payment extends Model
         return $this->belongsTo(BillingStatement::class, 'billing_id');
     }
 
-    public function lineItem(): BelongsTo
+    public function catalogItem(): BelongsTo
     {
-        return $this->belongsTo(BillingLineItem::class, 'billing_line_item_id');
+        return $this->belongsTo(FeeCatalogItem::class, 'fee_catalog_item_id');
     }
 
-    public function receivedBy(): BelongsTo
+    public function payments(): HasMany
     {
-        return $this->belongsTo(User::class, 'received_by');
+        return $this->hasMany(Payment::class, 'billing_line_item_id');
     }
 
-    public function receipt(): HasOne
+    public function balance(): float
     {
-        return $this->hasOne(Receipt::class);
+        return max(0, (float) $this->amount_due - (float) $this->amount_paid);
     }
 }

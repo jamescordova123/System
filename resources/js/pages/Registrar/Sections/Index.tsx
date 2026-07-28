@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { Edit3, Layers, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '@/components/school/empty-state';
 import { FormField } from '@/components/school/form-field';
+import { ListToolbar } from '@/components/school/list-toolbar';
 import { ModuleShell, setModuleLayout } from '@/components/school/module-shell';
 import { PageHeader } from '@/components/school/page-header';
 import { StatCard } from '@/components/school/stat-card';
@@ -32,7 +33,23 @@ const emptyForm = { section_name: '', course_name: '', schedule: '' };
 export default function Index({ sections, stats }: Props) {
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Section | null>(null);
+    const [search, setSearch] = useState('');
+    const [enrollmentFilter, setEnrollmentFilter] = useState('all');
     const { data, setData, post, put, processing, errors, reset } = useForm(emptyForm);
+
+    const filtered = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return sections.filter((s) => {
+            if (enrollmentFilter === 'empty' && s.enrollments_count > 0) return false;
+            if (enrollmentFilter === 'has_students' && s.enrollments_count === 0) return false;
+            if (!term) return true;
+            return (
+                s.section_name.toLowerCase().includes(term) ||
+                s.course_name.toLowerCase().includes(term) ||
+                (s.schedule ?? '').toLowerCase().includes(term)
+            );
+        });
+    }, [sections, search, enrollmentFilter]);
 
     const openCreate = () => { setEditing(null); reset(); setOpen(true); };
     const openEdit = (section: Section) => {
@@ -61,8 +78,42 @@ export default function Index({ sections, stats }: Props) {
             </div>
             <Card className="rounded-2xl">
                 <CardContent className="pt-6">
-                    {sections.length === 0 ? (
-                        <EmptyState icon={Layers} title="No sections yet" description="Create class sections to start enrolling students." action={<Button onClick={openCreate} className="rounded-xl">New Section</Button>} />
+                    <ListToolbar
+                        search={search}
+                        onSearchChange={setSearch}
+                        searchPlaceholder="Search by section, course, or schedule…"
+                        resultCount={filtered.length}
+                        totalCount={sections.length}
+                        onClear={() => {
+                            setSearch('');
+                            setEnrollmentFilter('all');
+                        }}
+                        filters={[
+                            {
+                                key: 'enrollment',
+                                label: 'Enrollment',
+                                value: enrollmentFilter,
+                                onChange: setEnrollmentFilter,
+                                widthClassName: 'w-[160px]',
+                                options: [
+                                    { value: 'all', label: 'All sections' },
+                                    { value: 'has_students', label: 'Has students' },
+                                    { value: 'empty', label: 'Empty' },
+                                ],
+                            },
+                        ]}
+                    />
+                    {filtered.length === 0 ? (
+                        <EmptyState
+                            icon={Layers}
+                            title={sections.length === 0 ? 'No sections yet' : 'No results'}
+                            description={
+                                sections.length === 0
+                                    ? 'Create class sections to start enrolling students.'
+                                    : 'Try a different search or clear filters.'
+                            }
+                            action={sections.length === 0 ? <Button onClick={openCreate} className="rounded-xl">New Section</Button> : undefined}
+                        />
                     ) : (
                         <Table>
                             <TableHeader>
@@ -75,7 +126,7 @@ export default function Index({ sections, stats }: Props) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sections.map((s) => (
+                                {filtered.map((s) => (
                                     <TableRow key={s.id}>
                                         <TableCell className="font-medium">{s.section_name}</TableCell>
                                         <TableCell>{s.course_name}</TableCell>

@@ -9,7 +9,6 @@ use App\Models\BillingStatement;
 use App\Models\Payment;
 use App\Models\PaymentHistory;
 use App\Models\Receipt;
-use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -33,73 +32,6 @@ class CashierController extends Controller
                 ->get()
                 ->map(fn (Payment $p) => $this->formatPayment($p)),
         ]);
-    }
-
-    public function billing()
-    {
-        return Inertia::render('Cashier/Billing/Index', [
-            'statements' => BillingStatement::with('student')
-                ->latest()
-                ->get()
-                ->map(fn (BillingStatement $b) => $this->formatBilling($b)),
-            'stats' => [
-                'total' => BillingStatement::count(),
-                'unpaid' => BillingStatement::where('status', 'unpaid')->count(),
-                'partial' => BillingStatement::where('status', 'partial')->count(),
-                'paid' => BillingStatement::where('status', 'paid')->count(),
-            ],
-            'studentOptions' => Student::orderBy('last_name')
-                ->get()
-                ->map(fn (Student $s) => [
-                    'value' => $s->id,
-                    'label' => trim("{$s->student_number} — {$s->first_name} {$s->last_name}"),
-                ]),
-        ]);
-    }
-
-    public function storeBilling(Request $request)
-    {
-        $validated = $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'total_amount' => 'required|numeric|min:0.01',
-            'due_date' => 'required|date',
-            'status' => ['required', Rule::enum(BillingStatus::class)],
-        ]);
-
-        BillingStatement::create($validated);
-        $this->syncPaymentHistory((int) $validated['student_id']);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing statement created successfully.']);
-
-        return redirect()->route('cashier.billing');
-    }
-
-    public function updateBilling(Request $request, BillingStatement $billing)
-    {
-        $validated = $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'total_amount' => 'required|numeric|min:0.01',
-            'due_date' => 'required|date',
-            'status' => ['required', Rule::enum(BillingStatus::class)],
-        ]);
-
-        $billing->update($validated);
-        $this->syncPaymentHistory((int) $validated['student_id']);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing statement updated successfully.']);
-
-        return redirect()->route('cashier.billing');
-    }
-
-    public function destroyBilling(BillingStatement $billing)
-    {
-        $studentId = $billing->student_id;
-        $billing->delete();
-        $this->syncPaymentHistory($studentId);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing statement deleted successfully.']);
-
-        return redirect()->route('cashier.billing');
     }
 
     public function payments()
@@ -201,42 +133,18 @@ class CashierController extends Controller
         ]);
     }
 
-    private function syncPaymentHistory(int $studentId): void
+    /**
+     * Placeholder for payment-default risk predictions by section.
+     * Predictions will be wired once the model is ready.
+     */
+    public function riskAnalytics()
     {
-        $totalBilled = (float) BillingStatement::where('student_id', $studentId)->sum('total_amount');
-        $totalPaid = (float) Payment::whereHas(
-            'billingStatement',
-            fn ($q) => $q->where('student_id', $studentId)
-        )->sum('amount_paid');
-
-        $lastPayment = Payment::whereHas(
-            'billingStatement',
-            fn ($q) => $q->where('student_id', $studentId)
-        )->latest('payment_date')->first();
-
-        PaymentHistory::updateOrCreate(
-            ['student_id' => $studentId],
-            [
-                'total_paid' => $totalPaid,
-                'total_balance' => max(0, $totalBilled - $totalPaid),
-                'last_payment_date' => $lastPayment?->payment_date,
-            ]
-        );
+        return Inertia::render('Cashier/RiskAnalytics/Index');
     }
 
-    private function formatBilling(BillingStatement $b): array
+    private function syncPaymentHistory(int $studentId): void
     {
-        return [
-            'id' => $b->id,
-            'student_id' => $b->student_id,
-            'student_name' => trim("{$b->student?->first_name} {$b->student?->last_name}"),
-            'student_number' => $b->student?->student_number,
-            'total_amount' => number_format((float) $b->total_amount, 2),
-            'total_amount_raw' => (float) $b->total_amount,
-            'due_date' => $b->due_date->format('Y-m-d'),
-            'due_date_display' => $b->due_date->format('M d, Y'),
-            'status' => $b->status->value,
-        ];
+        PaymentHistory::syncFor($studentId);
     }
 
     private function formatPayment(Payment $p): array

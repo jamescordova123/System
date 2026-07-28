@@ -43,7 +43,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'password_changed_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, PasskeyUser
 {
@@ -127,8 +127,53 @@ class User extends Authenticatable implements HasMedia, PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_changed_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'role' => UserRole::class,
+        ];
+    }
+
+    /**
+     * Whether the user may change their password right now.
+     * After a successful change they must wait 30 days.
+     */
+    public function canChangePassword(): bool
+    {
+        if ($this->password_changed_at === null) {
+            return true;
+        }
+
+        return $this->password_changed_at->lte(now()->subDays(30));
+    }
+
+    /**
+     * When the next password change is allowed, or null if already allowed.
+     */
+    public function passwordChangeAvailableAt(): ?Carbon
+    {
+        if ($this->canChangePassword()) {
+            return null;
+        }
+
+        return $this->password_changed_at?->copy()->addDays(30);
+    }
+
+    /**
+     * Props shared with Settings pages for the password cooldown UI.
+     *
+     * @return array{can_change: bool, available_at: string|null, available_at_display: string|null, days_remaining: int}
+     */
+    public function passwordCooldownPayload(): array
+    {
+        $availableAt = $this->passwordChangeAvailableAt();
+
+        return [
+            'can_change' => $this->canChangePassword(),
+            'available_at' => $availableAt?->toIso8601String(),
+            'available_at_display' => $availableAt?->format('M d, Y'),
+            'days_remaining' => $availableAt
+                ? max(1, (int) ceil(now()->floatDiffInRealDays($availableAt)))
+                : 0,
         ];
     }
 

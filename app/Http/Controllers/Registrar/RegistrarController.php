@@ -10,8 +10,10 @@ use App\Models\Enrollment;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\LearnerProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -47,24 +49,20 @@ class RegistrarController extends Controller
                 'inactive' => Student::where('status', 'inactive')->count(),
                 'graduated' => Student::where('status', 'graduated')->count(),
             ],
+            'formOptions' => $this->learnerFormOptions(),
         ]);
     }
 
     public function storeStudent(Request $request)
     {
-        $validated = $request->validate([
-            'email' => 'required|email|unique:users,email',
+        $validated = $request->validate(array_merge(LearnerProfile::rules(), [
             'password' => 'required|string|min:8',
             'student_number' => 'required|string|unique:students,student_number',
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'birthdate' => 'required|date',
-            'gender' => 'required|string|max:50',
-            'contact_number' => 'nullable|string|max:50',
-            'address' => 'nullable|string',
             'status' => ['required', Rule::enum(StudentStatus::class)],
-        ]);
+            'email' => 'required|email|unique:users,email',
+        ]));
+
+        $validated = LearnerProfile::normalize($validated);
 
         DB::transaction(function () use ($validated) {
             $user = User::create([
@@ -76,18 +74,11 @@ class RegistrarController extends Controller
             ]);
             $user->assignRole('Student');
 
-            Student::create([
+            Student::create($this->studentAttributesFromValidated($validated, [
                 'user_id' => $user->id,
                 'student_number' => $validated['student_number'],
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'middle_name' => $validated['middle_name'] ?? null,
-                'birthdate' => $validated['birthdate'],
-                'gender' => $validated['gender'],
-                'contact_number' => $validated['contact_number'] ?? null,
-                'address' => $validated['address'] ?? null,
                 'status' => $validated['status'],
-            ]);
+            ]));
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Student created successfully.']);
@@ -97,19 +88,14 @@ class RegistrarController extends Controller
 
     public function updateStudent(Request $request, Student $student)
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($student->user_id)],
+        $validated = $request->validate(array_merge(LearnerProfile::rules(), [
             'password' => 'nullable|string|min:8',
             'student_number' => ['required', 'string', Rule::unique('students', 'student_number')->ignore($student->id)],
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'birthdate' => 'required|date',
-            'gender' => 'required|string|max:50',
-            'contact_number' => 'nullable|string|max:50',
-            'address' => 'nullable|string',
             'status' => ['required', Rule::enum(StudentStatus::class)],
-        ]);
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($student->user_id)],
+        ]));
+
+        $validated = LearnerProfile::normalize($validated);
 
         DB::transaction(function () use ($validated, $student) {
             $userData = [
@@ -120,19 +106,34 @@ class RegistrarController extends Controller
             if (! empty($validated['password'])) {
                 $userData['password'] = bcrypt($validated['password']);
             }
-            $student->user->update($userData);
 
-            $student->update([
+            // The linked portal account may have been deleted (or never
+            // created). Restore it when soft-deleted, otherwise recreate it,
+            // so the student always ends up with a working login.
+            $user = $student->user_id ? User::withTrashed()->find($student->user_id) : null;
+
+            if ($user) {
+                if ($user->trashed()) {
+                    $user->restore();
+                }
+                $user->update($userData);
+            } else {
+                $user = User::create([
+                    ...$userData,
+                    'password' => $userData['password'] ?? bcrypt(Str::password(12)),
+                    'email_verified_at' => now(),
+                ]);
+            }
+
+            if (! $user->hasRole('Student')) {
+                $user->assignRole('Student');
+            }
+
+            $student->update($this->studentAttributesFromValidated($validated, [
+                'user_id' => $user->id,
                 'student_number' => $validated['student_number'],
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'middle_name' => $validated['middle_name'] ?? null,
-                'birthdate' => $validated['birthdate'],
-                'gender' => $validated['gender'],
-                'contact_number' => $validated['contact_number'] ?? null,
-                'address' => $validated['address'] ?? null,
                 'status' => $validated['status'],
-            ]);
+            ]));
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Student updated successfully.']);
@@ -230,21 +231,51 @@ class RegistrarController extends Controller
                     'value' => $s->id,
                     'label' => "{$s->section_name} ({$s->course_name})",
                 ]),
+            'formOptions' => $this->learnerFormOptions(),
         ]);
     }
 
     public function storeEnrollment(Request $request)
     {
-        $validated = $request->validate([
-            'student_id' => 'required|exists:students,id',
+        $validated = $request->validate(array_merge(LearnerProfile::rules(), [
             'section_id' => 'required|exists:sections,id',
             'enrollment_date' => 'required|date',
             'status' => ['required', Rule::enum(EnrollmentStatus::class)],
-        ]);
+            'student_number' => 'nullable|string|unique:students,student_number',
+            'password' => 'nullable|string|min:8',
+            'email' => 'required|email|unique:users,email',
+        ]));
 
-        Enrollment::create($validated);
+        $validated = LearnerProfile::normalize($validated);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Enrollment created successfully.']);
+        DB::transaction(function () use ($validated) {
+            $password = $validated['password'] ?: Str::password(12);
+            $studentNumber = $validated['student_number'] ?: $this->generateStudentNumber();
+
+            $user = User::create([
+                'name' => trim("{$validated['first_name']} {$validated['last_name']}"),
+                'email' => $validated['email'],
+                'password' => bcrypt($password),
+                'role' => UserRole::Student,
+                'email_verified_at' => now(),
+            ]);
+            $user->assignRole('Student');
+
+            $student = Student::create($this->studentAttributesFromValidated($validated, [
+                'user_id' => $user->id,
+                'student_number' => $studentNumber,
+                'status' => StudentStatus::Active,
+            ]));
+
+            Enrollment::create([
+                'student_id' => $student->id,
+                'section_id' => $validated['section_id'],
+                'enrollment_date' => $validated['enrollment_date'],
+                'status' => $validated['status'],
+            ]);
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Enrollment created successfully. Student portal account was also created.']);
 
         return redirect()->route('registrar.enrollments');
     }
@@ -285,12 +316,116 @@ class RegistrarController extends Controller
             'full_name' => trim("{$s->first_name} {$s->middle_name} {$s->last_name}"),
             'email' => $s->user?->email,
             'gender' => $s->gender,
+            'sex' => $this->normalizeSex($s->gender),
             'contact_number' => $s->contact_number,
             'address' => $s->address,
             'status' => $s->status->value,
             'birthdate' => $s->birthdate->format('Y-m-d'),
             'birthdate_display' => $s->birthdate->format('M d, Y'),
+            'school_year' => $s->school_year,
+            'grade_to_enroll' => $s->grade_to_enroll,
+            'learner_status' => $s->learner_status,
+            'place_of_birth' => $s->place_of_birth,
+            'mother_tongue' => $s->mother_tongue,
+            'is_indigenous' => (bool) $s->is_indigenous,
+            'indigenous_specify' => $s->indigenous_specify,
+            'is_4ps_beneficiary' => (bool) $s->is_4ps_beneficiary,
+            'household_id_number' => $s->household_id_number,
+            'current_house_no' => $s->current_house_no,
+            'current_street' => $s->current_street,
+            'current_barangay' => $s->current_barangay,
+            'current_municipality' => $s->current_municipality,
+            'current_province' => $s->current_province,
+            'current_country' => $s->current_country ?? 'Philippines',
+            'current_zip_code' => $s->current_zip_code,
+            'permanent_same_as_current' => (bool) ($s->permanent_same_as_current ?? true),
+            'permanent_house_no' => $s->permanent_house_no,
+            'permanent_street' => $s->permanent_street,
+            'permanent_barangay' => $s->permanent_barangay,
+            'permanent_municipality' => $s->permanent_municipality,
+            'permanent_province' => $s->permanent_province,
+            'permanent_country' => $s->permanent_country ?? 'Philippines',
+            'permanent_zip_code' => $s->permanent_zip_code,
+            'father_last_name' => $s->father_last_name,
+            'father_first_name' => $s->father_first_name,
+            'father_middle_name' => $s->father_middle_name,
+            'father_contact' => $s->father_contact,
+            'mother_last_name' => $s->mother_last_name,
+            'mother_first_name' => $s->mother_first_name,
+            'mother_middle_name' => $s->mother_middle_name,
+            'mother_contact' => $s->mother_contact,
+            'guardian_last_name' => $s->guardian_last_name,
+            'guardian_first_name' => $s->guardian_first_name,
+            'guardian_middle_name' => $s->guardian_middle_name,
+            'guardian_contact' => $s->guardian_contact,
+            'jhs_graduation_date' => $s->jhs_graduation_date?->format('Y-m-d'),
+            'shs_semester' => $s->shs_semester,
+            'shs_track' => $s->shs_track,
+            'shs_strand' => $s->shs_strand,
+            'learning_modalities' => $s->learning_modalities ?? [],
+            'fb_account' => $s->fb_account,
+            'prev_school_name' => $s->prev_school_name,
+            'prev_school_address' => $s->prev_school_address,
+            'prev_section' => $s->prev_section,
+            'prev_school_year' => $s->prev_school_year,
+            'prev_graduation_date' => $s->prev_graduation_date?->format('Y-m-d'),
+            'prev_average' => $s->prev_average,
         ];
+    }
+
+    /**
+     * @return array{schoolYears: array<int, string>, grades: array<int, string>, modalities: array<string, string>, learnerStatuses: array<int, string>}
+     */
+    private function learnerFormOptions(): array
+    {
+        return [
+            'schoolYears' => LearnerProfile::schoolYears(),
+            'grades' => LearnerProfile::grades(),
+            'modalities' => LearnerProfile::modalities(),
+            'learnerStatuses' => LearnerProfile::learnerStatuses(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function studentAttributesFromValidated(array $validated, array $extra = []): array
+    {
+        $attributes = $extra;
+
+        foreach (LearnerProfile::studentAttributeKeys() as $key) {
+            if (array_key_exists($key, $validated)) {
+                $attributes[$key] = $validated[$key];
+            }
+        }
+
+        return $attributes;
+    }
+
+    private function generateStudentNumber(): string
+    {
+        $year = now()->format('Y');
+        $sequence = Student::withTrashed()->where('student_number', 'like', "{$year}-%")->count() + 1;
+
+        do {
+            $candidate = $year.'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+            $sequence++;
+        } while (Student::withTrashed()->where('student_number', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    private function normalizeSex(?string $gender): string
+    {
+        $value = strtolower((string) $gender);
+
+        return match ($value) {
+            'male', 'm' => 'Male',
+            'female', 'f' => 'Female',
+            default => in_array($gender, ['Male', 'Female'], true) ? $gender : '',
+        };
     }
 
     private function formatSection(Section $s): array
