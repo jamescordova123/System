@@ -8,7 +8,6 @@ import {
     CreditCard,
     FileText,
     GraduationCap,
-    History,
     LayoutDashboard,
     LayoutGrid,
     Layers,
@@ -36,31 +35,36 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
+const platformHiddenRoles = ['Admin', 'Registrar', 'Student', 'Cashier'];
+
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
         permission: 'view dashboard',
+        hideForRoles: platformHiddenRoles,
         iconClassName: 'text-sidebar-primary',
     },
     {
         title: 'Chat',
         href: '/chat',
         icon: MessageSquare,
+        hideForRoles: platformHiddenRoles,
         iconClassName: 'text-sidebar-primary',
     },
     {
         title: 'Action Center',
         href: '/action-center',
         icon: ClipboardList,
+        hideForRoles: platformHiddenRoles,
         iconClassName: 'text-sidebar-primary',
     },
 ];
 
 const registrarNavItems: NavItem[] = [
     {
-        title: 'Registrar Hub',
+        title: 'Dashboard',
         href: '/registrar',
         icon: GraduationCap,
         permission: 'manage students',
@@ -98,7 +102,7 @@ const registrarNavItems: NavItem[] = [
 
 const cashierNavItems: NavItem[] = [
     {
-        title: 'Cashier Hub',
+        title: 'Dashboard',
         href: '/cashier',
         icon: Banknote,
         permission: 'manage billing',
@@ -125,18 +129,11 @@ const cashierNavItems: NavItem[] = [
         permission: 'view receipts',
         iconClassName: 'text-sidebar-primary',
     },
-    {
-        title: 'Payment History',
-        href: '/cashier/payment-history',
-        icon: History,
-        permission: 'manage payments',
-        iconClassName: 'text-sidebar-primary',
-    },
 ];
 
 const studentNavItems: NavItem[] = [
     {
-        title: 'Student Hub',
+        title: 'Dashboard',
         href: '/student',
         icon: GraduationCap,
         permission: 'view student portal',
@@ -161,6 +158,7 @@ const studentNavItems: NavItem[] = [
         href: '/student/announcements',
         icon: Megaphone,
         permission: 'view announcements',
+        hideForRoles: ['Admin'],
         iconClassName: 'text-sidebar-primary',
     },
     {
@@ -191,7 +189,7 @@ const adminNavItems: NavItem[] = [
         title: 'Roles & Permissions',
         href: '/roles',
         icon: ShieldAlert,
-        role: 'Super-Admin',
+        permission: 'manage roles',
         iconClassName: 'text-sidebar-primary',
     },
     {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
 use App\Models\OnlineEnrollmentApplication;
+use App\Services\EnrollmentApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -39,18 +40,28 @@ class OnlineEnrollmentApplicationController extends Controller
 
     public function show(OnlineEnrollmentApplication $application)
     {
-        $application->load('reviewer');
+        $application->load('reviewer', 'student');
 
         return Inertia::render('Registrar/OnlineApplications/Show', [
             'application' => $this->detail($application),
         ]);
     }
 
-    public function updateStatus(Request $request, OnlineEnrollmentApplication $application)
+    public function updateStatus(Request $request, OnlineEnrollmentApplication $application, EnrollmentApprovalService $approvalService)
     {
+        if ($application->isFinalized()) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => 'This application has already been finalized and its status can no longer be changed.',
+            ]);
+
+            return redirect()->route('registrar.online-applications.show', $application);
+        }
+
         $validated = $request->validate([
             'application_status' => ['required', Rule::in(['pending', 'reviewed', 'approved', 'rejected'])],
             'registrar_notes' => 'nullable|string|max:2000',
+            'notify_applicant' => 'boolean',
         ]);
 
         $application->update([
@@ -60,9 +71,22 @@ class OnlineEnrollmentApplicationController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        $notify = $request->boolean('notify_applicant', true);
+        $message = 'Application status updated successfully.';
+
+        if ($validated['application_status'] === 'approved') {
+            $student = $approvalService->approve($application, notify: $notify);
+            $message = $student
+                ? "Application approved. Student account (No. {$student->student_number}) is ready.".($notify ? ' Login credentials emailed to the applicant.' : '')
+                : 'Application approved, but no account could be created (missing email).';
+        } elseif ($notify) {
+            $approvalService->notifyStatusChange($application);
+            $message = 'Application status updated and the applicant has been notified by email.';
+        }
+
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Application status updated successfully.',
+            'message' => $message,
         ]);
 
         return redirect()->route('registrar.online-applications.show', $application);
@@ -163,6 +187,8 @@ class OnlineEnrollmentApplicationController extends Controller
             'registrar_notes' => $app->registrar_notes,
             'reviewed_by' => $app->reviewer?->name,
             'reviewed_at' => $app->reviewed_at?->format('M d, Y h:i A'),
+            'is_finalized' => $app->isFinalized(),
+            'student_number' => $app->student?->student_number,
         ];
     }
 }

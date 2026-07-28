@@ -20,11 +20,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $permissions = [
             'view dashboard',
             'manage users',
+            'manage roles',
             'manage students',
             'manage sections',
             'manage enrollments',
             'manage billing',
             'manage payments',
+            'manage cashiers',
             'view receipts',
             'view announcements',
             'manage announcements',
@@ -47,6 +49,23 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $superAdminRole->syncPermissions($permissions);
+
+        // Scoped administrator role: School Overview, User Management,
+        // Roles & Permissions, Announcements, and Risk Analytics only.
+        // Unlike Super-Admin, this role does NOT bypass permission checks.
+        $adminRole = Role::firstOrCreate([
+            'name' => 'Admin',
+            'guard_name' => 'web',
+        ]);
+        $adminRole->syncPermissions([
+            'view dashboard',
+            'view school overview',
+            'manage users',
+            'manage roles',
+            'manage announcements',
+            'view announcements',
+            'view risk analytics',
+        ]);
 
         $registrarRole = Role::firstOrCreate([
             'name' => 'Registrar',
@@ -91,6 +110,16 @@ class RolesAndPermissionsSeeder extends Seeder
             ]
         );
         $admin->assignRole($superAdminRole);
+
+        $adminStaff = User::firstOrCreate(
+            ['email' => 'admin.staff@example.com'],
+            [
+                'name' => 'Admin Staff',
+                'password' => bcrypt('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $adminStaff->assignRole($adminRole);
 
         $cashier = User::firstOrCreate(
             ['email' => 'cashier@example.com'],

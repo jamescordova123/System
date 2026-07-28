@@ -14,6 +14,8 @@ export type NavItem = {
     permission?: string;
     permissions?: string[];
     role?: string;
+    /** Hide this item for users holding any of these roles (e.g. admin-only sidebars). */
+    hideForRoles?: string[];
     iconClassName?: string;
     children?: NavItem[];
 };
