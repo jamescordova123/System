@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { CreditCard, History, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '@/components/school/empty-state';
 import { FormField } from '@/components/school/form-field';
+import { ListToolbar } from '@/components/school/list-toolbar';
 import { ModuleShell, setModuleLayout } from '@/components/school/module-shell';
 import { PageHeader } from '@/components/school/page-header';
 import { StatCard } from '@/components/school/stat-card';
@@ -52,9 +53,44 @@ const emptyForm = {
 
 export default function Index({ payments, histories, stats, billingOptions }: Props) {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const [methodFilter, setMethodFilter] = useState('all');
+    const [balanceFilter, setBalanceFilter] = useState('all');
     const { data, setData, post, processing, errors, reset } = useForm(emptyForm);
 
     const selectedBilling = billingOptions.find((b) => String(b.value) === data.billing_id);
+
+    const filteredPayments = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return payments.filter((p) => {
+            if (methodFilter !== 'all' && p.payment_method !== methodFilter) return false;
+            if (!term) return true;
+            return (
+                p.student_name.toLowerCase().includes(term) ||
+                p.received_by?.toLowerCase().includes(term) ||
+                p.payment_date.toLowerCase().includes(term)
+            );
+        });
+    }, [payments, search, methodFilter]);
+
+    const filteredHistories = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return histories.filter((h) => {
+            if (balanceFilter === 'outstanding' && h.total_balance === '0.00') return false;
+            if (balanceFilter === 'cleared' && h.total_balance !== '0.00') return false;
+            if (!term) return true;
+            return (
+                h.student_name.toLowerCase().includes(term) ||
+                (h.student_number ?? '').toLowerCase().includes(term)
+            );
+        });
+    }, [histories, search, balanceFilter]);
+
+    const clearFilters = () => {
+        setSearch('');
+        setMethodFilter('all');
+        setBalanceFilter('all');
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,7 +128,28 @@ export default function Index({ payments, histories, stats, billingOptions }: Pr
                 <TabsContent value="transactions">
                     <Card className="rounded-2xl">
                         <CardContent className="pt-6">
-                            {payments.length === 0 ? (
+                            <ListToolbar
+                                search={search}
+                                onSearchChange={setSearch}
+                                searchPlaceholder="Search by student, cashier, or date…"
+                                resultCount={filteredPayments.length}
+                                totalCount={payments.length}
+                                onClear={clearFilters}
+                                filters={[
+                                    {
+                                        key: 'method',
+                                        label: 'Method',
+                                        value: methodFilter,
+                                        onChange: setMethodFilter,
+                                        widthClassName: 'w-[140px]',
+                                        options: [
+                                            { value: 'all', label: 'All methods' },
+                                            { value: 'cash', label: 'Cash' },
+                                        ],
+                                    },
+                                ]}
+                            />
+                            {filteredPayments.length === 0 ? (
                                 <EmptyState icon={CreditCard} title="No payments recorded" description="Payment transactions will be listed here." action={<Button onClick={() => setOpen(true)} className="rounded-xl">Record Payment</Button>} />
                             ) : (
                                 <Table>
@@ -106,7 +163,7 @@ export default function Index({ payments, histories, stats, billingOptions }: Pr
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {payments.map((p) => (
+                                        {filteredPayments.map((p) => (
                                             <TableRow key={p.id}>
                                                 <TableCell className="font-medium">{p.student_name}</TableCell>
                                                 <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">₱{p.amount_paid}</TableCell>
@@ -125,7 +182,29 @@ export default function Index({ payments, histories, stats, billingOptions }: Pr
                 <TabsContent value="history">
                     <Card className="rounded-2xl">
                         <CardContent className="pt-6">
-                            {histories.length === 0 ? (
+                            <ListToolbar
+                                search={search}
+                                onSearchChange={setSearch}
+                                searchPlaceholder="Search by student name or number…"
+                                resultCount={filteredHistories.length}
+                                totalCount={histories.length}
+                                onClear={clearFilters}
+                                filters={[
+                                    {
+                                        key: 'balance',
+                                        label: 'Balance',
+                                        value: balanceFilter,
+                                        onChange: setBalanceFilter,
+                                        widthClassName: 'w-[160px]',
+                                        options: [
+                                            { value: 'all', label: 'All balances' },
+                                            { value: 'outstanding', label: 'Has balance' },
+                                            { value: 'cleared', label: 'Fully paid' },
+                                        ],
+                                    },
+                                ]}
+                            />
+                            {filteredHistories.length === 0 ? (
                                 <EmptyState icon={History} title="No payment history" description="Student payment summaries will appear here once payments are recorded." />
                             ) : (
                                 <Table>
@@ -138,7 +217,7 @@ export default function Index({ payments, histories, stats, billingOptions }: Pr
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {histories.map((h) => (
+                                        {filteredHistories.map((h) => (
                                             <TableRow key={h.id}>
                                                 <TableCell>
                                                     <div className="font-medium">{h.student_name}</div>

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 type Address = {
@@ -75,9 +76,15 @@ type Application = {
     reviewed_at: string | null;
     is_finalized: boolean;
     student_number: string | null;
+    enrolled_section: string | null;
 };
 
-type Props = { application: Application };
+type SectionOption = { value: number; label: string };
+
+type Props = {
+    application: Application;
+    sectionOptions: SectionOption[];
+};
 
 const modalityLabels: Record<string, string> = {
     modular_print: 'Modular (Print)',
@@ -206,19 +213,44 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
     );
 }
 
-export default function Show({ application }: Props) {
-    const { data, setData, put, processing } = useForm({
+export default function Show({ application, sectionOptions }: Props) {
+    const { data, setData, put, processing, errors } = useForm({
         application_status: application.application_status,
         registrar_notes: application.registrar_notes || '',
         notify_applicant: true,
+        section_id: '',
     });
     const [confirmOpen, setConfirmOpen] = useState(false);
 
     const isFinalized = application.is_finalized;
     const isFinalDecision = data.application_status === 'approved' || data.application_status === 'rejected';
     const isStatusChanging = data.application_status !== application.application_status;
+    const isApproving = data.application_status === 'approved';
+
+    const needsSectionBackfill =
+        application.application_status === 'approved' && !!application.student_number && !application.enrolled_section;
+
+    const sectionFixForm = useForm({ section_id: '' });
+
+    const submitSectionFix = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!sectionFixForm.data.section_id) {
+            toast.error('Please select a section.');
+            return;
+        }
+        sectionFixForm.put(`/registrar/online-applications/${application.id}/section`, {
+            onSuccess: () => toast.success('Section assigned.'),
+            onError: () => toast.error('Failed to assign section.'),
+        });
+    };
 
     const submit = () => {
+        if (isApproving && !data.section_id) {
+            toast.error('Please select a section before approving.');
+            setConfirmOpen(false);
+            return;
+        }
+
         put(`/registrar/online-applications/${application.id}/status`, {
             onSuccess: () => {
                 toast.success('Status updated.');
@@ -230,6 +262,10 @@ export default function Show({ application }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isApproving && !data.section_id) {
+            toast.error('Please select a section before approving.');
+            return;
+        }
         if (isFinalDecision && isStatusChanging) {
             setConfirmOpen(true);
             return;
@@ -346,8 +382,53 @@ export default function Show({ application }: Props) {
                                     <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                                     <p className="text-xs leading-relaxed">
                                         Portal account created — <strong>Student No. {application.student_number}</strong>
+                                        {application.enrolled_section ? (
+                                            <>
+                                                <br />
+                                                Enrolled in <strong>{application.enrolled_section}</strong>
+                                            </>
+                                        ) : null}
                                     </p>
                                 </div>
+                            )}
+
+                            {needsSectionBackfill && (
+                                <form
+                                    onSubmit={submitSectionFix}
+                                    className="space-y-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3"
+                                >
+                                    <div className="flex items-start gap-2.5 text-amber-700 dark:text-amber-400">
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                        <p className="text-xs leading-relaxed">
+                                            This student's portal account was created, but they aren't enrolled into a section yet, so they
+                                            won't appear under Sections or Enrollments. Assign a section now to make them visible.
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Select
+                                            value={sectionFixForm.data.section_id}
+                                            onValueChange={(v) => sectionFixForm.setData('section_id', v)}
+                                        >
+                                            <SelectTrigger className="rounded-xl bg-background">
+                                                <SelectValue placeholder="Select section" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {sectionOptions.map((o) => (
+                                                    <SelectItem key={o.value} value={String(o.value)}>
+                                                        {o.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button
+                                            type="submit"
+                                            disabled={sectionFixForm.processing}
+                                            className="shrink-0 rounded-xl bg-[#800000] hover:bg-[#5d0000]"
+                                        >
+                                            Enroll
+                                        </Button>
+                                    </div>
+                                </form>
                             )}
 
                             <form onSubmit={handleSubmit} className="space-y-4">
@@ -359,6 +440,29 @@ export default function Show({ application }: Props) {
                                         disabled={isFinalized}
                                     />
                                 </div>
+                                {!isFinalized && isApproving && (
+                                    <div className="space-y-2">
+                                        <Label>Assign Section <span className="text-destructive">*</span></Label>
+                                        <Select value={data.section_id} onValueChange={(v) => setData('section_id', v)}>
+                                            <SelectTrigger className="rounded-xl">
+                                                <SelectValue placeholder="Select section to enroll into" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {sectionOptions.map((o) => (
+                                                    <SelectItem key={o.value} value={String(o.value)}>
+                                                        {o.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.section_id && (
+                                            <p className="text-xs text-destructive">{errors.section_id}</p>
+                                        )}
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Required for approval. This creates the enrollment record under Sections and Enrollments.
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <Label htmlFor="registrar_notes">Notes</Label>
                                     <textarea
@@ -419,7 +523,10 @@ export default function Show({ application }: Props) {
                         </p>
                         {data.application_status === 'approved' && (
                             <p>
-                                A student portal account will be created for <strong className="text-foreground">{application.full_name}</strong>.
+                                A student portal account will be created for <strong className="text-foreground">{application.full_name}</strong>
+                                {data.section_id
+                                    ? <> and they will be enrolled into <strong className="text-foreground">{sectionOptions.find((o) => String(o.value) === data.section_id)?.label}</strong>.</>
+                                    : '.'}
                                 {data.notify_applicant && application.email
                                     ? ` Login credentials will be emailed to ${application.email}.`
                                     : ' No email notification will be sent.'}

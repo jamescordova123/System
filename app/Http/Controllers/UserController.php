@@ -13,19 +13,28 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $search = trim($request->query('search', ''));
+        $role = trim($request->query('role', ''));
 
         $query = User::with('roles');
 
-        if (! empty($search)) {
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
+        if ($role !== '' && $role !== 'all') {
+            $query->whereHas('roles', fn ($q) => $q->where('name', $role));
+        }
+
         return Inertia::render('Admin/Users/Index', [
-            'users' => $query->paginate(10)->withQueryString(),
+            'users' => $query->latest()->paginate(10)->withQueryString(),
             'roles' => Role::all(),
+            'filters' => [
+                'search' => $search,
+                'role' => $role ?: 'all',
+            ],
         ]);
     }
 

@@ -54,8 +54,15 @@ export default function Welcome() {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#800000]/95 via-[#800000]/85 to-[#FFD700]/10" />
 
                 <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center px-6 py-24 text-center text-white sm:py-32">
-                    <div className="mb-8 flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-2 shadow-xl backdrop-blur-sm">
-                        <img src="/images/diltc/crest.png" alt={`${appName} crest`} className="h-full w-full object-contain" />
+                    <div className="relative mb-8">
+                        <div className="absolute inset-0 rounded-full bg-[#FFD700]/30 blur-2xl" />
+                        <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white p-1.5 shadow-2xl shadow-black/40 ring-4 ring-[#FFD700]/90 sm:h-32 sm:w-32">
+                            <img
+                                src="/images/diltc/crest.png"
+                                alt={`${appName} official seal`}
+                                className="h-full w-full rounded-full object-contain"
+                            />
+                        </div>
                     </div>
 
                     <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFD700] px-5 py-2 text-xs font-bold tracking-wider text-black shadow-lg">

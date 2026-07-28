@@ -161,7 +161,8 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Self-registration is disabled — the Registrar creates student
+        // accounts when approving enrollment applications.
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

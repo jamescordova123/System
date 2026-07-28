@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, usePage, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import type { Auth } from '@/types';
 import { Pagination, LinkItem } from '@/components/Pagination';
+import { ListToolbar } from '@/components/school/list-toolbar';
 import { toast } from 'sonner';
 import {
     Dialog,
@@ -66,6 +67,10 @@ interface Props {
         total: number;
     };
     roles: Role[];
+    filters?: {
+        search?: string;
+        role?: string;
+    };
 }
 
 const getAvatarStyle = (name: string) => {
@@ -80,9 +85,49 @@ const getAvatarStyle = (name: string) => {
     };
 };
 
-export default function Index({ users, roles }: Props) {
+export default function Index({ users, roles, filters }: Props) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [search, setSearch] = useState(filters?.search ?? '');
+    const [roleFilter, setRoleFilter] = useState(filters?.role ?? 'all');
+
+    useEffect(() => {
+        setSearch(filters?.search ?? '');
+        setRoleFilter(filters?.role ?? 'all');
+    }, [filters?.search, filters?.role]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            if (search === (filters?.search ?? '')) return;
+            applyUserFilters({ search });
+        }, 300);
+        return () => window.clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
+
+    const applyUserFilters = (overrides: { search?: string; role?: string } = {}) => {
+        const nextSearch = overrides.search ?? search;
+        const nextRole = overrides.role ?? roleFilter;
+        const params: Record<string, string> = {};
+        if (nextSearch.trim()) params.search = nextSearch.trim();
+        if (nextRole && nextRole !== 'all') params.role = nextRole;
+
+        router.get('/admin/users', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const clearUserFilters = () => {
+        setSearch('');
+        setRoleFilter('all');
+        router.get('/admin/users', {}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
 
     const [impersonateTargetUser, setImpersonateTargetUser] =
         useState<User | null>(null);
@@ -234,6 +279,35 @@ export default function Index({ users, roles }: Props) {
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
+                            <div className="border-b border-border/30 px-6 pt-4">
+                                <ListToolbar
+                                    search={search}
+                                    onSearchChange={setSearch}
+                                    searchPlaceholder="Search by name or email…"
+                                    resultCount={users.data.length}
+                                    totalCount={users.total}
+                                    onClear={clearUserFilters}
+                                    filters={[
+                                        {
+                                            key: 'role',
+                                            label: 'Role',
+                                            value: roleFilter,
+                                            onChange: (value) => {
+                                                setRoleFilter(value);
+                                                applyUserFilters({ role: value });
+                                            },
+                                            widthClassName: 'w-[160px]',
+                                            options: [
+                                                { value: 'all', label: 'All roles' },
+                                                ...roles.map((r) => ({
+                                                    value: r.name,
+                                                    label: r.name,
+                                                })),
+                                            ],
+                                        },
+                                    ]}
+                                />
+                            </div>
                             <Table>
                                 <TableHeader className="bg-muted/10">
                                     <TableRow className="border-b border-border/30 hover:bg-transparent">
@@ -252,7 +326,14 @@ export default function Index({ users, roles }: Props) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users.data.map((user) => {
+                                    {users.data.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="py-12 text-center text-sm text-muted-foreground">
+                                                No users match your search or filters.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                    users.data.map((user) => {
                                         const initials = user.name
                                             .split(' ')
                                             .map((n) => n[0])
@@ -414,7 +495,8 @@ export default function Index({ users, roles }: Props) {
                                                 </TableCell>
                                             </TableRow>
                                         );
-                                    })}
+                                    })
+                                    )}
                                 </TableBody>
                             </Table>
                             <Pagination

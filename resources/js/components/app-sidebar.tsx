@@ -6,8 +6,8 @@ import {
     BrainCircuit,
     ClipboardList,
     CreditCard,
-    FileText,
     GraduationCap,
+    History,
     LayoutDashboard,
     LayoutGrid,
     Layers,
@@ -17,6 +17,7 @@ import {
     Receipt,
     ShieldAlert,
     Users,
+    Wallet,
 } from 'lucide-react';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import AppLogo from '@/components/app-logo';
@@ -109,9 +110,9 @@ const cashierNavItems: NavItem[] = [
         iconClassName: 'text-sidebar-primary',
     },
     {
-        title: 'Billing',
-        href: '/cashier/billing',
-        icon: FileText,
+        title: 'Student Fees',
+        href: '/cashier/student-fees',
+        icon: Wallet,
         permission: 'manage billing',
         iconClassName: 'text-sidebar-primary',
     },
@@ -127,6 +128,13 @@ const cashierNavItems: NavItem[] = [
         href: '/cashier/receipts',
         icon: Receipt,
         permission: 'view receipts',
+        iconClassName: 'text-sidebar-primary',
+    },
+    {
+        title: 'Risk Analytics',
+        href: '/cashier/risk-analytics',
+        icon: BrainCircuit,
+        permission: 'manage billing',
         iconClassName: 'text-sidebar-primary',
     },
 ];
@@ -147,18 +155,24 @@ const studentNavItems: NavItem[] = [
         iconClassName: 'text-sidebar-primary',
     },
     {
-        title: 'My Billing',
-        href: '/student/billing',
-        icon: CreditCard,
+        title: 'My Information',
+        href: '/student/profile',
+        icon: Users,
         permission: 'view student portal',
         iconClassName: 'text-sidebar-primary',
     },
     {
-        title: 'Announcements',
-        href: '/student/announcements',
-        icon: Megaphone,
-        permission: 'view announcements',
-        hideForRoles: ['Admin'],
+        title: 'My Billing',
+        href: '/student/billing',
+        icon: Wallet,
+        permission: 'view student portal',
+        iconClassName: 'text-sidebar-primary',
+    },
+    {
+        title: 'Transaction History',
+        href: '/student/transactions',
+        icon: History,
+        permission: 'view student portal',
         iconClassName: 'text-sidebar-primary',
     },
     {
