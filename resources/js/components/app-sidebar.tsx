@@ -1,6 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import {
     Banknote,
+    BarChart3,
     Bell,
     BookOpen,
     BrainCircuit,
@@ -87,6 +88,13 @@ const registrarNavItems: NavItem[] = [
         permission: 'manage enrollments',
         iconClassName: 'text-indigo-500 dark:text-indigo-400',
     },
+    {
+        title: 'Analytics',
+        href: '/registrar/analytics',
+        icon: BarChart3,
+        permission: 'view enrollment analytics',
+        iconClassName: 'text-indigo-500 dark:text-indigo-400',
+    },
 ];
 
 const cashierNavItems: NavItem[] = [
@@ -123,6 +131,13 @@ const cashierNavItems: NavItem[] = [
         href: '/cashier/payment-history',
         icon: History,
         permission: 'manage payments',
+        iconClassName: 'text-emerald-500 dark:text-emerald-400',
+    },
+    {
+        title: 'Analytics',
+        href: '/cashier/analytics',
+        icon: BarChart3,
+        permission: 'view financial analytics',
         iconClassName: 'text-emerald-500 dark:text-emerald-400',
     },
 ];
@@ -193,6 +208,13 @@ const adminNavItems: NavItem[] = [
         icon: Megaphone,
         permission: 'manage announcements',
         iconClassName: 'text-violet-500 dark:text-violet-400',
+    },
+    {
+        title: 'School Analytics',
+        href: '/admin/analytics',
+        icon: BarChart3,
+        permission: 'view school analytics',
+        iconClassName: 'text-blue-500 dark:text-blue-400',
     },
     {
         title: 'Risk Analytics',
