@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\ImpersonateController;
 use App\Http\Controllers\Admin\SchoolOverviewController;
 use App\Http\Controllers\Admin\SecurityController as AdminSecurityController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\Cashier\CashierController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
@@ -77,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/sections', [RegistrarController::class, 'storeSection'])->name('sections.store')->middleware('permission:manage sections');
         Route::put('/sections/{section}', [RegistrarController::class, 'updateSection'])->name('sections.update')->middleware('permission:manage sections');
         Route::delete('/sections/{section}', [RegistrarController::class, 'destroySection'])->name('sections.destroy')->middleware('permission:manage sections');
+        Route::get('/analytics', [AnalyticsController::class, 'registrar'])->name('analytics')->middleware('permission:view enrollment analytics');
         Route::get('/enrollments', [RegistrarController::class, 'enrollments'])->name('enrollments')->middleware('permission:manage enrollments');
         Route::post('/enrollments', [RegistrarController::class, 'storeEnrollment'])->name('enrollments.store')->middleware('permission:manage enrollments');
         Route::put('/enrollments/{enrollment}', [RegistrarController::class, 'updateEnrollment'])->name('enrollments.update')->middleware('permission:manage enrollments');
@@ -94,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/payments', [CashierController::class, 'storePayment'])->name('payments.store')->middleware('permission:manage payments');
         Route::get('/receipts', [CashierController::class, 'receipts'])->name('receipts')->middleware('permission:view receipts');
         Route::get('/payment-history', [CashierController::class, 'paymentHistory'])->name('payment-history')->middleware('permission:manage payments');
+        Route::get('/analytics', [AnalyticsController::class, 'cashier'])->name('analytics')->middleware('permission:view financial analytics');
     });
 
     // Student Portal
@@ -114,6 +117,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/announcements', [SchoolOverviewController::class, 'storeAnnouncement'])->name('announcements.store')->middleware('permission:manage announcements');
         Route::put('/announcements/{announcement}', [SchoolOverviewController::class, 'updateAnnouncement'])->name('announcements.update')->middleware('permission:manage announcements');
         Route::delete('/announcements/{announcement}', [SchoolOverviewController::class, 'destroyAnnouncement'])->name('announcements.destroy')->middleware('permission:manage announcements');
+        Route::get('/analytics', [AnalyticsController::class, 'admin'])->name('analytics')->middleware('permission:view school analytics');
         Route::get('/risk-analytics', [SchoolOverviewController::class, 'riskAnalytics'])->name('risk-analytics')->middleware('permission:view risk analytics');
         Route::post('/risk-analytics', [SchoolOverviewController::class, 'storeRiskPrediction'])->name('risk-analytics.store')->middleware('permission:view risk analytics');
         Route::put('/risk-analytics/{riskPrediction}', [SchoolOverviewController::class, 'updateRiskPrediction'])->name('risk-analytics.update')->middleware('permission:view risk analytics');

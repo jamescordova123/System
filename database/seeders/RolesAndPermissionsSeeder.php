@@ -32,6 +32,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'view student portal',
             'view risk analytics',
             'view school overview',
+            'view enrollment analytics',
+            'view financial analytics',
+            'view school analytics',
             'delete records',
         ];
 
@@ -58,6 +61,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage sections',
             'manage enrollments',
             'view announcements',
+            'view enrollment analytics',
         ]);
 
         $cashierRole = Role::firstOrCreate([
@@ -69,6 +73,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage billing',
             'manage payments',
             'view receipts',
+            'view financial analytics',
         ]);
 
         $studentRole = Role::firstOrCreate([
