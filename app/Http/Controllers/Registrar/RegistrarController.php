@@ -36,6 +36,45 @@ class RegistrarController extends Controller
         ]);
     }
 
+    public function analytics()
+    {
+        $enrollmentStatuses = DB::table('enrollments')
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->get()
+            ->map(fn($item) => ['status' => ucfirst($item->status), 'count' => (int)$item->count]);
+
+        $monthlyEnrollments = DB::table('enrollments')
+            ->select(DB::raw('DATE_FORMAT(enrollment_date, "%Y-%m") as month'), DB::raw('count(*) as count'))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->take(12)
+            ->get()
+            ->map(fn($item) => ['month' => $item->month, 'count' => (int)$item->count]);
+
+        $studentsBySection = Section::withCount('enrollments')
+            ->orderBy('enrollments_count', 'desc')
+            ->get()
+            ->map(fn(Section $s) => [
+                'section_name' => $s->section_name,
+                'course_name' => $s->course_name,
+                'count' => $s->enrollments_count,
+            ]);
+
+        $studentStatus = DB::table('students')
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->get()
+            ->map(fn($item) => ['status' => ucfirst($item->status), 'count' => (int)$item->count]);
+
+        return Inertia::render('Registrar/Analytics', [
+            'enrollmentStatuses' => $enrollmentStatuses,
+            'monthlyEnrollments' => $monthlyEnrollments,
+            'studentsBySection' => $studentsBySection,
+            'studentStatus' => $studentStatus,
+        ]);
+    }
+
     public function students()
     {
         return Inertia::render('Registrar/Students/Index', [

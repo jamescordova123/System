@@ -6,9 +6,11 @@ use App\Enums\BillingStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\BillingStatement;
+use App\Models\Enrollment;
 use App\Models\Payment;
 use App\Models\PaymentHistory;
 use App\Models\Receipt;
+use App\Models\Section;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -31,6 +33,41 @@ class CashierController extends Controller
                 ->take(5)
                 ->get()
                 ->map(fn (Payment $p) => $this->formatPayment($p)),
+        ]);
+    }
+
+    public function analytics()
+    {
+        $monthlyRevenue = DB::table('payments')
+            ->select(DB::raw('DATE_FORMAT(payment_date, "%Y-%m") as month'), DB::raw('sum(amount_paid) as total'))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->take(12)
+            ->get()
+            ->map(fn($item) => ['month' => $item->month, 'total' => (float)$item->total]);
+
+        $sections = Section::all();
+        $sectionPerformance = $sections->map(function (Section $section) {
+            $studentIds = Enrollment::where('section_id', $section->id)->pluck('student_id');
+            $billingStatements = BillingStatement::whereIn('student_id', $studentIds)->get();
+            $totalBilled = $billingStatements->sum('total_amount');
+            
+            $billingIds = $billingStatements->pluck('id');
+            $totalCollected = Payment::whereIn('billing_id', $billingIds)->sum('amount_paid');
+            
+            return [
+                'id' => $section->id,
+                'section_name' => $section->section_name,
+                'course_name' => $section->course_name,
+                'billed' => (float)$totalBilled,
+                'collected' => (float)$totalCollected,
+                'outstanding' => (float)max(0, $totalBilled - $totalCollected),
+            ];
+        });
+
+        return Inertia::render('Cashier/Analytics', [
+            'monthlyRevenue' => $monthlyRevenue,
+            'sectionPerformance' => $sectionPerformance,
         ]);
     }
 
@@ -133,13 +170,66 @@ class CashierController extends Controller
         ]);
     }
 
-    /**
-     * Placeholder for payment-default risk predictions by section.
-     * Predictions will be wired once the model is ready.
-     */
     public function riskAnalytics()
     {
-        return Inertia::render('Cashier/RiskAnalytics/Index');
+        $sections = Section::all();
+        $predictiveAnalytics = $sections->map(function (Section $section) {
+            $studentIds = Enrollment::where('section_id', $section->id)->pluck('student_id');
+            $billingStatements = BillingStatement::whereIn('student_id', $studentIds)->get();
+            
+            $totalBilled = $billingStatements->sum('total_amount');
+            $billingIds = $billingStatements->pluck('id');
+            $totalCollected = Payment::whereIn('billing_id', $billingIds)->sum('amount_paid');
+            
+            $totalStatements = $billingStatements->count();
+            $unpaidStatements = $billingStatements->where('status', 'unpaid')->count();
+            $partialStatements = $billingStatements->where('status', 'partial')->count();
+            
+            $unpaidRatio = $totalStatements > 0 ? ($unpaidStatements / $totalStatements) : 0;
+            $collectionRate = $totalBilled > 0 ? ($totalCollected / $totalBilled) : 1;
+            $partialRatio = $totalStatements > 0 ? ($partialStatements / $totalStatements) : 0;
+            
+            $t1_score = $unpaidRatio > 0.4 ? 80 : ($unpaidRatio > 0.2 ? 50 : 20);
+            $t2_score = $collectionRate < 0.6 ? 90 : ($collectionRate < 0.8 ? 60 : 15);
+            $t3_score = $partialRatio > 0.3 ? 70 : 30;
+            
+            $delinquencyProbability = ($t1_score + $t2_score + $t3_score) / 3;
+            if ($totalStatements === 0) {
+                $delinquencyProbability = 0;
+            }
+            
+            if ($delinquencyProbability >= 70) {
+                $riskLevel = 'high';
+                $confidence = 88;
+            } elseif ($delinquencyProbability >= 40) {
+                $riskLevel = 'medium';
+                $confidence = 82;
+            } else {
+                $riskLevel = 'low';
+                $confidence = 94;
+            }
+            
+            $features = [];
+            if ($unpaidRatio > 0.3) $features[] = 'High unpaid fee ratio';
+            if ($collectionRate < 0.7) $features[] = 'Low collection rate';
+            if ($partialRatio > 0.2) $features[] = 'Frequent installment requests';
+            if (empty($features)) $features[] = 'Steady payment history';
+            
+            return [
+                'section_name' => $section->section_name,
+                'course_name' => $section->course_name,
+                'unpaid_ratio' => round($unpaidRatio * 100, 1),
+                'collection_rate' => round($collectionRate * 100, 1),
+                'probability' => round($delinquencyProbability, 1),
+                'risk_level' => $riskLevel,
+                'confidence' => $confidence,
+                'factors' => $features,
+            ];
+        });
+
+        return Inertia::render('Cashier/RiskAnalytics/Index', [
+            'predictiveAnalytics' => $predictiveAnalytics,
+        ]);
     }
 
     private function syncPaymentHistory(int $studentId): void

@@ -76,6 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Registrar Module
     Route::prefix('registrar')->name('registrar.')->group(function () {
         Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard')->middleware('permission:manage students');
+        Route::get('/analytics', [RegistrarController::class, 'analytics'])->name('analytics')->middleware('permission:manage students');
         Route::get('/students', [RegistrarController::class, 'students'])->name('students')->middleware('permission:manage students');
         Route::post('/students', [RegistrarController::class, 'storeStudent'])->name('students.store')->middleware('permission:manage students');
         Route::put('/students/{student}', [RegistrarController::class, 'updateStudent'])->name('students.update')->middleware('permission:manage students');
@@ -97,6 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Cashier Module
     Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/', [CashierController::class, 'dashboard'])->name('dashboard')->middleware('permission:manage billing');
+        Route::get('/analytics', [CashierController::class, 'analytics'])->name('analytics')->middleware('permission:manage billing');
         Route::get('/student-fees', [StudentFeeController::class, 'index'])->name('student-fees')->middleware('permission:manage billing');
         Route::post('/student-fees', [StudentFeeController::class, 'store'])->name('student-fees.store')->middleware('permission:manage billing');
         Route::get('/student-fees/{billing}', [StudentFeeController::class, 'show'])->name('student-fees.show')->middleware('permission:manage billing');
@@ -131,6 +133,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin School Modules
     Route::prefix('admin')->name('admin.school.')->group(function () {
         Route::get('/overview', [SchoolOverviewController::class, 'overview'])->name('overview')->middleware('permission:view school overview');
+        Route::get('/analytics', [SchoolOverviewController::class, 'analytics'])->name('analytics')->middleware('permission:view school overview');
         Route::get('/announcements', [SchoolOverviewController::class, 'announcements'])->name('announcements')->middleware('permission:manage announcements');
         Route::post('/announcements', [SchoolOverviewController::class, 'storeAnnouncement'])->name('announcements.store')->middleware('permission:manage announcements');
         Route::put('/announcements/{announcement}', [SchoolOverviewController::class, 'updateAnnouncement'])->name('announcements.update')->middleware('permission:manage announcements');

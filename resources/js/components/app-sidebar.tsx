@@ -72,6 +72,13 @@ const registrarNavItems: NavItem[] = [
         iconClassName: 'text-sidebar-primary',
     },
     {
+        title: 'Analytics',
+        href: '/registrar/analytics',
+        icon: BrainCircuit,
+        permission: 'manage students',
+        iconClassName: 'text-sidebar-primary',
+    },
+    {
         title: 'Students',
         href: '/registrar/students',
         icon: Users,
@@ -106,6 +113,13 @@ const cashierNavItems: NavItem[] = [
         title: 'Dashboard',
         href: '/cashier',
         icon: Banknote,
+        permission: 'manage billing',
+        iconClassName: 'text-sidebar-primary',
+    },
+    {
+        title: 'Analytics',
+        href: '/cashier/analytics',
+        icon: BrainCircuit,
         permission: 'manage billing',
         iconClassName: 'text-sidebar-primary',
     },
@@ -193,6 +207,13 @@ const adminNavItems: NavItem[] = [
         iconClassName: 'text-sidebar-primary',
     },
     {
+        title: 'Analytics',
+        href: '/admin/analytics',
+        icon: BrainCircuit,
+        permission: 'view school overview',
+        iconClassName: 'text-sidebar-primary',
+    },
+    {
         title: 'User Management',
         href: '/admin/users',
         icon: Users,
@@ -211,13 +232,6 @@ const adminNavItems: NavItem[] = [
         href: '/admin/announcements',
         icon: Megaphone,
         permission: 'manage announcements',
-        iconClassName: 'text-sidebar-primary',
-    },
-    {
-        title: 'Risk Analytics',
-        href: '/admin/risk-analytics',
-        icon: BrainCircuit,
-        permission: 'view risk analytics',
         iconClassName: 'text-sidebar-primary',
     },
 ];
