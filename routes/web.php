@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\ActionCenterController;
 use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\ImpersonateController;
 use App\Http\Controllers\Admin\SchoolOverviewController;
 use App\Http\Controllers\Admin\SecurityController as AdminSecurityController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\Cashier\CashierController;
 use App\Http\Controllers\Cashier\StudentFeeController;
 use App\Http\Controllers\ChatController;
@@ -92,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/online-applications/{application}', [OnlineEnrollmentApplicationController::class, 'show'])->name('online-applications.show')->middleware('permission:manage enrollments');
         Route::put('/online-applications/{application}/status', [OnlineEnrollmentApplicationController::class, 'updateStatus'])->name('online-applications.status')->middleware('permission:manage enrollments');
         Route::put('/online-applications/{application}/section', [OnlineEnrollmentApplicationController::class, 'assignSection'])->name('online-applications.assign-section')->middleware('permission:manage enrollments');
+        Route::get('/analytics', [AnalyticsController::class, 'registrar'])->name('analytics')->middleware('permission:manage students');
     });
 
     // Cashier Module
@@ -109,7 +112,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payments', [CashierController::class, 'payments'])->name('payments')->middleware('permission:manage payments');
         Route::post('/payments', [CashierController::class, 'storePayment'])->name('payments.store')->middleware('permission:manage payments');
         Route::get('/receipts', [CashierController::class, 'receipts'])->name('receipts')->middleware('permission:view receipts');
-        Route::get('/risk-analytics', [CashierController::class, 'riskAnalytics'])->name('risk-analytics')->middleware('permission:manage billing');
+        Route::get('/analytics', [AnalyticsController::class, 'cashier'])->name('analytics')->middleware('permission:manage billing');
+        Route::get('/risk-analytics', [AnalyticsController::class, 'cashierRisk'])->name('risk-analytics')->middleware('permission:manage billing');
         Route::redirect('/payment-history', '/cashier/payments')->name('payment-history');
     });
 
@@ -139,6 +143,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/risk-analytics', [SchoolOverviewController::class, 'storeRiskPrediction'])->name('risk-analytics.store')->middleware('permission:view risk analytics');
         Route::put('/risk-analytics/{riskPrediction}', [SchoolOverviewController::class, 'updateRiskPrediction'])->name('risk-analytics.update')->middleware('permission:view risk analytics');
         Route::delete('/risk-analytics/{riskPrediction}', [SchoolOverviewController::class, 'destroyRiskPrediction'])->name('risk-analytics.destroy')->middleware('permission:view risk analytics');
+        Route::get('/analytics', [AnalyticsController::class, 'admin'])->name('analytics')->middleware('permission:view school overview');
     });
 });
 

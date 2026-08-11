@@ -134,12 +134,12 @@ class CashierController extends Controller
     }
 
     /**
-     * Placeholder for payment-default risk predictions by section.
-     * Predictions will be wired once the model is ready.
+     * Placeholder retained for backwards-compatible callers. The cashier risk
+     * analytics view is now served by AnalyticsController@cashierRisk.
      */
     public function riskAnalytics()
     {
-        return Inertia::render('Cashier/RiskAnalytics/Index');
+        return redirect()->route('cashier.risk-analytics');
     }
 
     private function syncPaymentHistory(int $studentId): void
