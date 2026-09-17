@@ -5,15 +5,18 @@ use App\Http\Controllers\Admin\ImpersonateController;
 use App\Http\Controllers\Admin\SchoolOverviewController;
 use App\Http\Controllers\Admin\SecurityController as AdminSecurityController;
 use App\Http\Controllers\Cashier\CashierController;
+use App\Http\Controllers\Cashier\StudentFeeController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnlineEnrollmentController;
+use App\Http\Controllers\PublicPropertyController;
+use App\Http\Controllers\Registrar\OnlineEnrollmentApplicationController;
 use App\Http\Controllers\Registrar\RegistrarController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Student\StudentPortalController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\PublicPropertyController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -21,11 +24,15 @@ Route::get('/buy', [PublicPropertyController::class, 'buy'])->name('public.buy')
 Route::get('/rent', [PublicPropertyController::class, 'rent'])->name('public.rent');
 Route::post('/properties/inquire', [PublicPropertyController::class, 'inquire'])->name('public.inquire');
 
+Route::get('/enroll', [OnlineEnrollmentController::class, 'create'])->name('enroll');
+Route::post('/enroll', [OnlineEnrollmentController::class, 'store'])->name('enroll.store');
+Route::get('/enroll/success', [OnlineEnrollmentController::class, 'success'])->name('enroll.success');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/search', [SearchController::class, 'search'])->name('api.search');
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
-    Route::resource('roles', RoleController::class);
-    Route::resource('admin/users', UserController::class);
+    Route::resource('roles', RoleController::class)->middleware('permission:manage roles');
+    Route::resource('admin/users', UserController::class)->middleware('permission:manage users');
     Route::post('admin/impersonate/leave', [ImpersonateController::class, 'leave'])->name('admin.impersonate.leave');
     Route::post('admin/impersonate/{user}', [ImpersonateController::class, 'impersonate'])->name('admin.impersonate');
 
@@ -69,10 +76,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Registrar Module
     Route::prefix('registrar')->name('registrar.')->group(function () {
         Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard')->middleware('permission:manage students');
+        Route::get('/analytics', [RegistrarController::class, 'analytics'])->name('analytics')->middleware('permission:manage students');
         Route::get('/students', [RegistrarController::class, 'students'])->name('students')->middleware('permission:manage students');
         Route::post('/students', [RegistrarController::class, 'storeStudent'])->name('students.store')->middleware('permission:manage students');
         Route::put('/students/{student}', [RegistrarController::class, 'updateStudent'])->name('students.update')->middleware('permission:manage students');
         Route::delete('/students/{student}', [RegistrarController::class, 'destroyStudent'])->name('students.destroy')->middleware('permission:manage students');
+        Route::post('/students/{student}/send-credentials', [RegistrarController::class, 'sendCredentials'])->name('students.send-credentials')->middleware('permission:manage students');
         Route::get('/sections', [RegistrarController::class, 'sections'])->name('sections')->middleware('permission:manage sections');
         Route::post('/sections', [RegistrarController::class, 'storeSection'])->name('sections.store')->middleware('permission:manage sections');
         Route::put('/sections/{section}', [RegistrarController::class, 'updateSection'])->name('sections.update')->middleware('permission:manage sections');
@@ -81,27 +90,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/enrollments', [RegistrarController::class, 'storeEnrollment'])->name('enrollments.store')->middleware('permission:manage enrollments');
         Route::put('/enrollments/{enrollment}', [RegistrarController::class, 'updateEnrollment'])->name('enrollments.update')->middleware('permission:manage enrollments');
         Route::delete('/enrollments/{enrollment}', [RegistrarController::class, 'destroyEnrollment'])->name('enrollments.destroy')->middleware('permission:manage enrollments');
+        Route::get('/online-applications', [OnlineEnrollmentApplicationController::class, 'index'])->name('online-applications')->middleware('permission:manage enrollments');
+        Route::get('/online-applications/{application}', [OnlineEnrollmentApplicationController::class, 'show'])->name('online-applications.show')->middleware('permission:manage enrollments');
+        Route::put('/online-applications/{application}/status', [OnlineEnrollmentApplicationController::class, 'updateStatus'])->name('online-applications.status')->middleware('permission:manage enrollments');
+        Route::put('/online-applications/{application}/section', [OnlineEnrollmentApplicationController::class, 'assignSection'])->name('online-applications.assign-section')->middleware('permission:manage enrollments');
     });
 
     // Cashier Module
     Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/', [CashierController::class, 'dashboard'])->name('dashboard')->middleware('permission:manage billing');
-        Route::get('/billing', [CashierController::class, 'billing'])->name('billing')->middleware('permission:manage billing');
-        Route::post('/billing', [CashierController::class, 'storeBilling'])->name('billing.store')->middleware('permission:manage billing');
-        Route::put('/billing/{billing}', [CashierController::class, 'updateBilling'])->name('billing.update')->middleware('permission:manage billing');
-        Route::delete('/billing/{billing}', [CashierController::class, 'destroyBilling'])->name('billing.destroy')->middleware('permission:manage billing');
+        Route::get('/analytics', [CashierController::class, 'analytics'])->name('analytics')->middleware('permission:manage billing');
+        Route::get('/student-fees', [StudentFeeController::class, 'index'])->name('student-fees')->middleware('permission:manage billing');
+        Route::post('/student-fees', [StudentFeeController::class, 'store'])->name('student-fees.store')->middleware('permission:manage billing');
+        Route::get('/student-fees/{billing}', [StudentFeeController::class, 'show'])->name('student-fees.show')->middleware('permission:manage billing');
+        Route::put('/student-fees/{billing}', [StudentFeeController::class, 'update'])->name('student-fees.update')->middleware('permission:manage billing');
+        Route::delete('/student-fees/{billing}', [StudentFeeController::class, 'destroy'])->name('student-fees.destroy')->middleware('permission:manage billing');
+        Route::post('/student-fees/{billing}/items/{item}/pay', [StudentFeeController::class, 'payItem'])->name('student-fees.items.pay')->middleware('permission:manage payments');
+        Route::put('/student-fees/{billing}/items/{item}', [StudentFeeController::class, 'updateItem'])->name('student-fees.items.update')->middleware('permission:manage billing');
+        Route::post('/fee-catalog', [StudentFeeController::class, 'storeCatalogItem'])->name('fee-catalog.store')->middleware('permission:manage billing');
+        Route::put('/fee-catalog/{item}', [StudentFeeController::class, 'updateCatalogItem'])->name('fee-catalog.update')->middleware('permission:manage billing');
         Route::get('/payments', [CashierController::class, 'payments'])->name('payments')->middleware('permission:manage payments');
         Route::post('/payments', [CashierController::class, 'storePayment'])->name('payments.store')->middleware('permission:manage payments');
         Route::get('/receipts', [CashierController::class, 'receipts'])->name('receipts')->middleware('permission:view receipts');
-        Route::get('/payment-history', [CashierController::class, 'paymentHistory'])->name('payment-history')->middleware('permission:manage payments');
+        Route::get('/risk-analytics', [CashierController::class, 'riskAnalytics'])->name('risk-analytics')->middleware('permission:manage billing');
+        Route::redirect('/payment-history', '/cashier/payments')->name('payment-history');
     });
 
     // Student Portal
     Route::prefix('student')->name('student.')->group(function () {
         Route::get('/', [StudentPortalController::class, 'dashboard'])->name('dashboard')->middleware('permission:view student portal');
         Route::get('/enrollments', [StudentPortalController::class, 'enrollments'])->name('enrollments')->middleware('permission:view student portal');
+        Route::get('/profile', [StudentPortalController::class, 'profile'])->name('profile')->middleware('permission:view student portal');
+        Route::put('/profile', [StudentPortalController::class, 'updateProfile'])->name('profile.update')->middleware('permission:view student portal');
         Route::get('/billing', [StudentPortalController::class, 'billing'])->name('billing')->middleware('permission:view student portal');
-        Route::get('/announcements', [StudentPortalController::class, 'announcements'])->name('announcements')->middleware('permission:view announcements');
+        Route::get('/transactions', [StudentPortalController::class, 'transactions'])->name('transactions')->middleware('permission:view student portal');
+        // Announcements now live inside the Notifications page.
+        Route::redirect('/announcements', '/student/notifications')->name('announcements');
         Route::get('/notifications', [StudentPortalController::class, 'notifications'])->name('notifications')->middleware('permission:view notifications');
         Route::post('/notifications/read-all', [StudentPortalController::class, 'markAllNotificationsRead'])->name('notifications.read-all')->middleware('permission:view notifications');
         Route::post('/notifications/{notification}/read', [StudentPortalController::class, 'markNotificationRead'])->name('notifications.read')->middleware('permission:view notifications');
@@ -110,6 +134,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin School Modules
     Route::prefix('admin')->name('admin.school.')->group(function () {
         Route::get('/overview', [SchoolOverviewController::class, 'overview'])->name('overview')->middleware('permission:view school overview');
+        Route::get('/analytics', [SchoolOverviewController::class, 'analytics'])->name('analytics')->middleware('permission:view school overview');
         Route::get('/announcements', [SchoolOverviewController::class, 'announcements'])->name('announcements')->middleware('permission:manage announcements');
         Route::post('/announcements', [SchoolOverviewController::class, 'storeAnnouncement'])->name('announcements.store')->middleware('permission:manage announcements');
         Route::put('/announcements/{announcement}', [SchoolOverviewController::class, 'updateAnnouncement'])->name('announcements.update')->middleware('permission:manage announcements');

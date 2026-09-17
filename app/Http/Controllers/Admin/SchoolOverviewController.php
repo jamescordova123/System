@@ -14,6 +14,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Services\AnnouncementDispatchService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -39,6 +40,57 @@ class SchoolOverviewController extends Controller
         ]);
     }
 
+    public function analytics()
+    {
+        $studentStatus = DB::table('students')
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->get()
+            ->map(fn($item) => ['status' => ucfirst($item->status), 'count' => (int)$item->count]);
+
+        $studentsBySection = Section::withCount('enrollments')
+            ->orderBy('enrollments_count', 'desc')
+            ->get()
+            ->map(fn(Section $s) => [
+                'section_name' => $s->section_name,
+                'course_name' => $s->course_name,
+                'count' => $s->enrollments_count,
+            ]);
+
+        $monthlyRevenue = DB::table('payments')
+            ->select(DB::raw('DATE_FORMAT(payment_date, "%Y-%m") as month'), DB::raw('sum(amount_paid) as total'))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->take(12)
+            ->get()
+            ->map(fn($item) => ['month' => $item->month, 'total' => (float)$item->total]);
+
+        $sections = Section::all();
+        $sectionPerformance = $sections->map(function (Section $section) {
+            $studentIds = Enrollment::where('section_id', $section->id)->pluck('student_id');
+            $billingStatements = BillingStatement::whereIn('student_id', $studentIds)->get();
+            $totalBilled = $billingStatements->sum('total_amount');
+            
+            $billingIds = $billingStatements->pluck('id');
+            $totalCollected = Payment::whereIn('billing_id', $billingIds)->sum('amount_paid');
+            
+            return [
+                'section_name' => $section->section_name,
+                'course_name' => $section->course_name,
+                'billed' => (float)$totalBilled,
+                'collected' => (float)$totalCollected,
+                'outstanding' => (float)max(0, $totalBilled - $totalCollected),
+            ];
+        });
+
+        return Inertia::render('Admin/Analytics', [
+            'studentStatus' => $studentStatus,
+            'studentsBySection' => $studentsBySection,
+            'monthlyRevenue' => $monthlyRevenue,
+            'sectionPerformance' => $sectionPerformance,
+        ]);
+    }
+
     public function announcements()
     {
         $announcements = Announcement::with('creator')
@@ -46,11 +98,22 @@ class SchoolOverviewController extends Controller
             ->paginate(10)
             ->through(fn (Announcement $a) => $this->formatAnnouncement($a));
 
+        $students = Student::with('user')
+            ->whereHas('user')
+            ->get()
+            ->map(fn (Student $s) => [
+                'id' => $s->id,
+                'name' => trim("{$s->first_name} {$s->last_name}"),
+                'email' => $s->user->email,
+                'student_number' => $s->student_number,
+            ]);
+
         return Inertia::render('Admin/Announcements/Index', [
             'announcements' => $announcements,
             'stats' => [
                 'total' => Announcement::count(),
             ],
+            'students' => $students,
         ]);
     }
 

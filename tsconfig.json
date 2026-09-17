@@ -111,7 +111,9 @@
         "paths": {
             "@/*": ["./resources/js/*"]
         },
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "types": ["vite/client"]
     },
     "include": [
         "resources/js/**/*.ts",

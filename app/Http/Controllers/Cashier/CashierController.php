@@ -6,10 +6,11 @@ use App\Enums\BillingStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\BillingStatement;
+use App\Models\Enrollment;
 use App\Models\Payment;
 use App\Models\PaymentHistory;
 use App\Models\Receipt;
-use App\Models\Student;
+use App\Models\Section;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -35,71 +36,39 @@ class CashierController extends Controller
         ]);
     }
 
-    public function billing()
+    public function analytics()
     {
-        return Inertia::render('Cashier/Billing/Index', [
-            'statements' => BillingStatement::with('student')
-                ->latest()
-                ->get()
-                ->map(fn (BillingStatement $b) => $this->formatBilling($b)),
-            'stats' => [
-                'total' => BillingStatement::count(),
-                'unpaid' => BillingStatement::where('status', 'unpaid')->count(),
-                'partial' => BillingStatement::where('status', 'partial')->count(),
-                'paid' => BillingStatement::where('status', 'paid')->count(),
-            ],
-            'studentOptions' => Student::orderBy('last_name')
-                ->get()
-                ->map(fn (Student $s) => [
-                    'value' => $s->id,
-                    'label' => trim("{$s->student_number} — {$s->first_name} {$s->last_name}"),
-                ]),
+        $monthlyRevenue = DB::table('payments')
+            ->select(DB::raw('DATE_FORMAT(payment_date, "%Y-%m") as month'), DB::raw('sum(amount_paid) as total'))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->take(12)
+            ->get()
+            ->map(fn($item) => ['month' => $item->month, 'total' => (float)$item->total]);
+
+        $sections = Section::all();
+        $sectionPerformance = $sections->map(function (Section $section) {
+            $studentIds = Enrollment::where('section_id', $section->id)->pluck('student_id');
+            $billingStatements = BillingStatement::whereIn('student_id', $studentIds)->get();
+            $totalBilled = $billingStatements->sum('total_amount');
+            
+            $billingIds = $billingStatements->pluck('id');
+            $totalCollected = Payment::whereIn('billing_id', $billingIds)->sum('amount_paid');
+            
+            return [
+                'id' => $section->id,
+                'section_name' => $section->section_name,
+                'course_name' => $section->course_name,
+                'billed' => (float)$totalBilled,
+                'collected' => (float)$totalCollected,
+                'outstanding' => (float)max(0, $totalBilled - $totalCollected),
+            ];
+        });
+
+        return Inertia::render('Cashier/Analytics', [
+            'monthlyRevenue' => $monthlyRevenue,
+            'sectionPerformance' => $sectionPerformance,
         ]);
-    }
-
-    public function storeBilling(Request $request)
-    {
-        $validated = $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'total_amount' => 'required|numeric|min:0.01',
-            'due_date' => 'required|date',
-            'status' => ['required', Rule::enum(BillingStatus::class)],
-        ]);
-
-        BillingStatement::create($validated);
-        $this->syncPaymentHistory((int) $validated['student_id']);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing statement created successfully.']);
-
-        return redirect()->route('cashier.billing');
-    }
-
-    public function updateBilling(Request $request, BillingStatement $billing)
-    {
-        $validated = $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'total_amount' => 'required|numeric|min:0.01',
-            'due_date' => 'required|date',
-            'status' => ['required', Rule::enum(BillingStatus::class)],
-        ]);
-
-        $billing->update($validated);
-        $this->syncPaymentHistory((int) $validated['student_id']);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing statement updated successfully.']);
-
-        return redirect()->route('cashier.billing');
-    }
-
-    public function destroyBilling(BillingStatement $billing)
-    {
-        $studentId = $billing->student_id;
-        $billing->delete();
-        $this->syncPaymentHistory($studentId);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing statement deleted successfully.']);
-
-        return redirect()->route('cashier.billing');
     }
 
     public function payments()
@@ -109,9 +78,14 @@ class CashierController extends Controller
                 ->latest()
                 ->get()
                 ->map(fn (Payment $p) => $this->formatPayment($p)),
+            'histories' => PaymentHistory::with('student')
+                ->latest()
+                ->get()
+                ->map(fn (PaymentHistory $h) => $this->formatPaymentHistory($h)),
             'stats' => [
                 'total' => Payment::count(),
                 'collected' => number_format((float) Payment::sum('amount_paid'), 2),
+                'students_tracked' => PaymentHistory::count(),
             ],
             'billingOptions' => BillingStatement::with('student')
                 ->whereIn('status', ['unpaid', 'partial'])
@@ -176,14 +150,18 @@ class CashierController extends Controller
     public function receipts()
     {
         return Inertia::render('Cashier/Receipts/Index', [
-            'receipts' => Receipt::with('payment.billingStatement.student')
+            'receipts' => Receipt::with('payment.billingStatement.student', 'payment.receivedBy')
                 ->latest()
                 ->get()
                 ->map(fn (Receipt $r) => [
                     'id' => $r->id,
                     'receipt_number' => $r->receipt_number,
                     'student_name' => trim("{$r->payment?->billingStatement?->student?->first_name} {$r->payment?->billingStatement?->student?->last_name}"),
+                    'student_number' => $r->payment?->billingStatement?->student?->student_number,
                     'amount' => number_format((float) ($r->payment?->amount_paid ?? 0), 2),
+                    'payment_method' => $r->payment?->payment_method?->value,
+                    'received_by' => $r->payment?->receivedBy?->name,
+                    'billing_total' => number_format((float) ($r->payment?->billingStatement?->total_amount ?? 0), 2),
                     'issued_at' => $r->issued_date?->format('M d, Y h:i A'),
                 ]),
             'stats' => [
@@ -192,61 +170,71 @@ class CashierController extends Controller
         ]);
     }
 
-    public function paymentHistory()
+    public function riskAnalytics()
     {
-        return Inertia::render('Cashier/PaymentHistory/Index', [
-            'histories' => PaymentHistory::with('student')
-                ->latest()
-                ->get()
-                ->map(fn (PaymentHistory $h) => [
-                    'id' => $h->id,
-                    'student_name' => trim("{$h->student?->first_name} {$h->student?->last_name}"),
-                    'student_number' => $h->student?->student_number,
-                    'total_paid' => number_format((float) $h->total_paid, 2),
-                    'last_payment_date' => $h->last_payment_date?->format('M d, Y'),
-                ]),
-            'stats' => [
-                'total' => PaymentHistory::count(),
-            ],
+        $sections = Section::all();
+        $predictiveAnalytics = $sections->map(function (Section $section) {
+            $studentIds = Enrollment::where('section_id', $section->id)->pluck('student_id');
+            $billingStatements = BillingStatement::whereIn('student_id', $studentIds)->get();
+            
+            $totalBilled = $billingStatements->sum('total_amount');
+            $billingIds = $billingStatements->pluck('id');
+            $totalCollected = Payment::whereIn('billing_id', $billingIds)->sum('amount_paid');
+            
+            $totalStatements = $billingStatements->count();
+            $unpaidStatements = $billingStatements->where('status', 'unpaid')->count();
+            $partialStatements = $billingStatements->where('status', 'partial')->count();
+            
+            $unpaidRatio = $totalStatements > 0 ? ($unpaidStatements / $totalStatements) : 0;
+            $collectionRate = $totalBilled > 0 ? ($totalCollected / $totalBilled) : 1;
+            $partialRatio = $totalStatements > 0 ? ($partialStatements / $totalStatements) : 0;
+            
+            $t1_score = $unpaidRatio > 0.4 ? 80 : ($unpaidRatio > 0.2 ? 50 : 20);
+            $t2_score = $collectionRate < 0.6 ? 90 : ($collectionRate < 0.8 ? 60 : 15);
+            $t3_score = $partialRatio > 0.3 ? 70 : 30;
+            
+            $delinquencyProbability = ($t1_score + $t2_score + $t3_score) / 3;
+            if ($totalStatements === 0) {
+                $delinquencyProbability = 0;
+            }
+            
+            if ($delinquencyProbability >= 70) {
+                $riskLevel = 'high';
+                $confidence = 88;
+            } elseif ($delinquencyProbability >= 40) {
+                $riskLevel = 'medium';
+                $confidence = 82;
+            } else {
+                $riskLevel = 'low';
+                $confidence = 94;
+            }
+            
+            $features = [];
+            if ($unpaidRatio > 0.3) $features[] = 'High unpaid fee ratio';
+            if ($collectionRate < 0.7) $features[] = 'Low collection rate';
+            if ($partialRatio > 0.2) $features[] = 'Frequent installment requests';
+            if (empty($features)) $features[] = 'Steady payment history';
+            
+            return [
+                'section_name' => $section->section_name,
+                'course_name' => $section->course_name,
+                'unpaid_ratio' => round($unpaidRatio * 100, 1),
+                'collection_rate' => round($collectionRate * 100, 1),
+                'probability' => round($delinquencyProbability, 1),
+                'risk_level' => $riskLevel,
+                'confidence' => $confidence,
+                'factors' => $features,
+            ];
+        });
+
+        return Inertia::render('Cashier/RiskAnalytics/Index', [
+            'predictiveAnalytics' => $predictiveAnalytics,
         ]);
     }
 
     private function syncPaymentHistory(int $studentId): void
     {
-        $totalBilled = (float) BillingStatement::where('student_id', $studentId)->sum('total_amount');
-        $totalPaid = (float) Payment::whereHas(
-            'billingStatement',
-            fn ($q) => $q->where('student_id', $studentId)
-        )->sum('amount_paid');
-
-        $lastPayment = Payment::whereHas(
-            'billingStatement',
-            fn ($q) => $q->where('student_id', $studentId)
-        )->latest('payment_date')->first();
-
-        PaymentHistory::updateOrCreate(
-            ['student_id' => $studentId],
-            [
-                'total_paid' => $totalPaid,
-                'total_balance' => max(0, $totalBilled - $totalPaid),
-                'last_payment_date' => $lastPayment?->payment_date,
-            ]
-        );
-    }
-
-    private function formatBilling(BillingStatement $b): array
-    {
-        return [
-            'id' => $b->id,
-            'student_id' => $b->student_id,
-            'student_name' => trim("{$b->student?->first_name} {$b->student?->last_name}"),
-            'student_number' => $b->student?->student_number,
-            'total_amount' => number_format((float) $b->total_amount, 2),
-            'total_amount_raw' => (float) $b->total_amount,
-            'due_date' => $b->due_date->format('Y-m-d'),
-            'due_date_display' => $b->due_date->format('M d, Y'),
-            'status' => $b->status->value,
-        ];
+        PaymentHistory::syncFor($studentId);
     }
 
     private function formatPayment(Payment $p): array
@@ -258,6 +246,18 @@ class CashierController extends Controller
             'payment_method' => $p->payment_method->value,
             'payment_date' => $p->payment_date->format('M d, Y'),
             'received_by' => $p->receivedBy?->name,
+        ];
+    }
+
+    private function formatPaymentHistory(PaymentHistory $h): array
+    {
+        return [
+            'id' => $h->id,
+            'student_name' => trim("{$h->student?->first_name} {$h->student?->last_name}"),
+            'student_number' => $h->student?->student_number,
+            'total_paid' => number_format((float) $h->total_paid, 2),
+            'total_balance' => number_format((float) $h->total_balance, 2),
+            'last_payment_date' => $h->last_payment_date?->format('M d, Y'),
         ];
     }
 }

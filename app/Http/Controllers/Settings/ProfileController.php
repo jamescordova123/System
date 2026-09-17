@@ -9,6 +9,8 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,9 +21,13 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $this->ensurePasswordChangedAtColumn();
+
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'passwordCooldown' => $request->user()->passwordCooldownPayload(),
         ]);
     }
 
@@ -58,5 +64,16 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function ensurePasswordChangedAtColumn(): void
+    {
+        if (Schema::hasColumn('users', 'password_changed_at')) {
+            return;
+        }
+
+        Schema::table('users', function ($table) {
+            $table->timestamp('password_changed_at')->nullable()->after('password');
+        });
     }
 }

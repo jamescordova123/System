@@ -50,4 +50,30 @@ class PaymentHistory extends Model
     {
         return $this->belongsTo(Student::class);
     }
+
+    /**
+     * Recompute the per-student rollup from billing statements and payments.
+     */
+    public static function syncFor(int $studentId): void
+    {
+        $totalBilled = (float) BillingStatement::where('student_id', $studentId)->sum('total_amount');
+        $totalPaid = (float) Payment::whereHas(
+            'billingStatement',
+            fn ($q) => $q->where('student_id', $studentId)
+        )->sum('amount_paid');
+
+        $lastPayment = Payment::whereHas(
+            'billingStatement',
+            fn ($q) => $q->where('student_id', $studentId)
+        )->latest('payment_date')->first();
+
+        self::updateOrCreate(
+            ['student_id' => $studentId],
+            [
+                'total_paid' => $totalPaid,
+                'total_balance' => max(0, $totalBilled - $totalPaid),
+                'last_payment_date' => $lastPayment?->payment_date,
+            ]
+        );
+    }
 }

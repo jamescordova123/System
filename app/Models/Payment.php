@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $billing_id
+ * @property int|null $billing_line_item_id
  * @property string $amount_paid
  * @property Carbon $payment_date
  * @property PaymentMethod $payment_method
@@ -29,6 +30,7 @@ class Payment extends Model
      */
     protected $fillable = [
         'billing_id',
+        'billing_line_item_id',
         'amount_paid',
         'payment_date',
         'payment_method',
@@ -50,6 +52,11 @@ class Payment extends Model
     public function billingStatement(): BelongsTo
     {
         return $this->belongsTo(BillingStatement::class, 'billing_id');
+    }
+
+    public function lineItem(): BelongsTo
+    {
+        return $this->belongsTo(BillingLineItem::class, 'billing_line_item_id');
     }
 
     public function receivedBy(): BelongsTo

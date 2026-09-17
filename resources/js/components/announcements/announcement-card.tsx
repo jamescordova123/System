@@ -24,17 +24,17 @@ type AnnouncementCardProps = {
 
 export function AnnouncementCard({ announcement, onEdit, onDelete }: AnnouncementCardProps) {
     return (
-        <Card className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-300/60 hover:shadow-xl hover:shadow-violet-500/10 dark:hover:border-violet-700/60">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/90 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#800000]/25 hover:shadow-xl hover:shadow-[#800000]/10">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#800000] via-[#800000] to-[#FFD700]" />
 
             <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:gap-5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#800000] to-[#5d0000] text-[#FFD700] shadow-md shadow-[#800000]/25">
                     <Megaphone className="h-5 w-5" />
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-3">
                     <div className="space-y-2">
-                        <h3 className="text-base font-semibold leading-snug text-foreground transition-colors group-hover:text-violet-600 dark:group-hover:text-violet-400 sm:text-lg">
+                        <h3 className="text-base font-semibold leading-snug text-foreground transition-colors group-hover:text-[#800000] dark:group-hover:text-[#FFD700] sm:text-lg">
                             {announcement.title}
                         </h3>
                         <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
@@ -62,7 +62,7 @@ export function AnnouncementCard({ announcement, onEdit, onDelete }: Announcemen
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 rounded-lg text-muted-foreground hover:bg-violet-50 hover:text-violet-600 sm:hidden dark:hover:bg-violet-950/40"
+                        className="h-9 w-9 rounded-lg text-muted-foreground hover:bg-[#800000]/8 hover:text-[#800000] sm:hidden dark:hover:bg-[#FFD700]/10 dark:hover:text-[#FFD700]"
                         onClick={() => onEdit(announcement)}
                     >
                         <Edit3 className="h-4 w-4" />
