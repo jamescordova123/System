@@ -20,6 +20,26 @@ class StudentPortalController extends Controller
     {
         $student = $this->resolveStudent($request);
 
+        $statements = $student
+            ? $student->billingStatements()
+                ->with(['lineItems.catalogItem', 'payments.receipt', 'payments.lineItem.catalogItem'])
+                ->latest()
+                ->get()
+            : collect();
+
+        $totalDue  = (float) $statements->sum(fn (BillingStatement $b) => (float) $b->total_amount);
+        $totalPaid = (float) $statements->sum(fn (BillingStatement $b) => $this->statementPaid($b));
+
+        $recentPayments = $student
+            ? Payment::query()
+                ->whereHas('billingStatement', fn ($q) => $q->where('student_id', $student->id))
+                ->with(['receipt', 'lineItem.catalogItem', 'billingStatement'])
+                ->latest('payment_date')
+                ->latest('id')
+                ->take(5)
+                ->get()
+            : collect();
+
         return Inertia::render('Student/Dashboard', [
             'student' => $student ? [
                 'name' => trim("{$student->first_name} {$student->last_name}"),
@@ -42,6 +62,44 @@ class StudentPortalController extends Controller
                     'created_by' => $a->creator?->name,
                     'created_at' => $a->created_at?->format('M d, Y'),
                 ]),
+            'billing_summary' => [
+                'assessed' => $totalDue,
+                'paid'     => $totalPaid,
+                'balance'  => max(0, $totalDue - $totalPaid),
+            ],
+            'recent_statements' => $statements->take(3)->map(function (BillingStatement $b) {
+                $paid = $this->statementPaid($b);
+                $due  = (float) $b->total_amount;
+                return [
+                    'id'            => $b->id,
+                    'program_label' => $b->program?->label() ?? 'General Billing',
+                    'school_year'   => $b->school_year,
+                    'due_date'      => $b->due_date->format('M d, Y'),
+                    'status'        => $b->status->value,
+                    'total_due'     => $due,
+                    'total_paid'    => $paid,
+                    'balance'       => max(0, $due - $paid),
+                    'items'         => $b->lineItems
+                        ->sortBy(fn (BillingLineItem $i) => $i->catalogItem?->sort_order ?? 0)
+                        ->values()
+                        ->map(fn (BillingLineItem $i) => [
+                            'id'         => $i->id,
+                            'label'      => $i->catalogItem?->label ?? '—',
+                            'amount_due' => (float) $i->amount_due,
+                            'amount_paid'=> (float) $i->amount_paid,
+                            'balance'    => $i->balance(),
+                            'status'     => $this->lineItemStatus($i),
+                        ]),
+                ];
+            }),
+            'recent_payments' => $recentPayments->map(fn (Payment $p) => [
+                'id'             => $p->id,
+                'payment_date'   => $p->payment_date->format('M d, Y'),
+                'receipt_number' => $p->receipt?->receipt_number,
+                'item_label'     => $p->lineItem?->catalogItem?->label,
+                'program_label'  => $p->billingStatement?->program?->label() ?? 'General Billing',
+                'amount_paid'    => (float) $p->amount_paid,
+            ]),
         ]);
     }
 

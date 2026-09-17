@@ -103,7 +103,7 @@ class RegistrarController extends Controller
 
         $validated = LearnerProfile::normalize($validated);
 
-        DB::transaction(function () use ($validated) {
+        $student = DB::transaction(function () use ($validated) {
             $user = User::create([
                 'name' => trim("{$validated['first_name']} {$validated['last_name']}"),
                 'email' => $validated['email'],
@@ -113,12 +113,20 @@ class RegistrarController extends Controller
             ]);
             $user->assignRole('Student');
 
-            Student::create($this->studentAttributesFromValidated($validated, [
+            return Student::create($this->studentAttributesFromValidated($validated, [
                 'user_id' => $user->id,
                 'student_number' => $validated['student_number'],
                 'status' => $validated['status'],
             ]));
         });
+
+        if ($request->boolean('send_credentials')) {
+            \App\Jobs\SendStudentCredentialsEmailJob::dispatch(
+                $student->id,
+                $validated['email'],
+                $validated['password']
+            );
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Student created successfully.']);
 
@@ -175,9 +183,67 @@ class RegistrarController extends Controller
             ]));
         });
 
+        if ($request->boolean('send_credentials')) {
+            \App\Jobs\SendStudentCredentialsEmailJob::dispatch(
+                $student->id,
+                $validated['email'],
+                ! empty($validated['password']) ? $validated['password'] : null
+            );
+        }
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Student updated successfully.']);
 
         return redirect()->route('registrar.students');
+    }
+
+    public function sendCredentials(Request $request, Student $student)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($student->user_id)],
+            'password' => 'nullable|string|min:8',
+        ]);
+
+        DB::transaction(function () use ($validated, $student) {
+            $user = $student->user_id ? User::withTrashed()->find($student->user_id) : null;
+            
+            $userData = [
+                'email' => $validated['email'],
+                'name' => trim("{$student->first_name} {$student->last_name}"),
+            ];
+            
+            if (! empty($validated['password'])) {
+                $userData['password'] = bcrypt($validated['password']);
+            }
+
+            if ($user) {
+                if ($user->trashed()) {
+                    $user->restore();
+                }
+                $user->update($userData);
+            } else {
+                $user = User::create([
+                    ...$userData,
+                    'password' => $userData['password'] ?? bcrypt(Str::password(12)),
+                    'role' => UserRole::Student,
+                    'email_verified_at' => now(),
+                ]);
+                $student->update(['user_id' => $user->id]);
+            }
+
+            if (! $user->hasRole('Student')) {
+                $user->assignRole('Student');
+            }
+        });
+
+        \App\Jobs\SendStudentCredentialsEmailJob::dispatch(
+            $student->id,
+            $validated['email'],
+            ! empty($validated['password']) ? $validated['password'] : null
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Student credentials updated and email queued successfully.']);
+
+        return redirect()->back();
     }
 
     public function destroyStudent(Student $student)

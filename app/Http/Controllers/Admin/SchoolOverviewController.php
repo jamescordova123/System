@@ -98,11 +98,22 @@ class SchoolOverviewController extends Controller
             ->paginate(10)
             ->through(fn (Announcement $a) => $this->formatAnnouncement($a));
 
+        $students = Student::with('user')
+            ->whereHas('user')
+            ->get()
+            ->map(fn (Student $s) => [
+                'id' => $s->id,
+                'name' => trim("{$s->first_name} {$s->last_name}"),
+                'email' => $s->user->email,
+                'student_number' => $s->student_number,
+            ]);
+
         return Inertia::render('Admin/Announcements/Index', [
             'announcements' => $announcements,
             'stats' => [
                 'total' => Announcement::count(),
             ],
+            'students' => $students,
         ]);
     }
 

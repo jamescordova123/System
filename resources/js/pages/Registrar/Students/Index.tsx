@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
-import { Edit3, Trash2, UserPlus, Users } from 'lucide-react';
+import { Edit3, Mail, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/school/empty-state';
 import { FormField } from '@/components/school/form-field';
 import {
@@ -116,6 +118,7 @@ type StudentForm = LearnerFormData & {
     password: string;
     student_number: string;
     status: string;
+    send_credentials: boolean;
 };
 
 const emptyForm = (): StudentForm => ({
@@ -123,6 +126,7 @@ const emptyForm = (): StudentForm => ({
     password: '',
     student_number: '',
     status: 'active',
+    send_credentials: false,
 });
 
 function studentToForm(student: Student): StudentForm {
@@ -186,6 +190,7 @@ function studentToForm(student: Student): StudentForm {
         password: '',
         student_number: student.student_number,
         status: student.status,
+        send_credentials: false,
     };
 }
 
@@ -196,8 +201,14 @@ export default function Index({ students, stats, formOptions }: Props) {
     const [yearFilter, setYearFilter] = useState('all');
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Student | null>(null);
+    const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
+    const [credentialsStudent, setCredentialsStudent] = useState<Student | null>(null);
 
     const { data, setData, post, put, processing, errors, reset } = useForm<StudentForm>(emptyForm());
+    const credentialsForm = useForm({
+        email: '',
+        password: '',
+    });
 
     const gradeOptions = useMemo(
         () => [...new Set(students.map((s) => s.grade_to_enroll).filter(Boolean) as string[])].sort(),
@@ -264,6 +275,31 @@ export default function Index({ students, stats, formOptions }: Props) {
     const handleDelete = (student: Student) => {
         if (!confirm(`Delete student ${student.full_name}?`)) return;
         router.delete(`/registrar/students/${student.id}`);
+    };
+
+    const handleSendCredentials = (student: Student) => {
+        setCredentialsStudent(student);
+        credentialsForm.setData({
+            email: student.email || '',
+            password: '',
+        });
+        credentialsForm.clearErrors();
+        setCredentialsModalOpen(true);
+    };
+
+    const submitCredentials = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!credentialsStudent) return;
+
+        credentialsForm.post(`/registrar/students/${credentialsStudent.id}/send-credentials`, {
+            onSuccess: () => {
+                setCredentialsModalOpen(false);
+                toast.success('Student credentials updated and email queued successfully.');
+            },
+            onError: () => {
+                toast.error('Please fix the errors in the credentials form.');
+            }
+        });
     };
 
     return (
@@ -363,6 +399,7 @@ export default function Index({ students, stats, formOptions }: Props) {
                                         <TableCell><StatusBadge status={s.status} /></TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
+                                                <Button variant="ghost" size="icon" onClick={() => handleSendCredentials(s)} title="Send account info to email" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"><Mail className="h-4 w-4" /></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Edit3 className="h-4 w-4" /></Button>
                                                 <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(s)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
@@ -400,6 +437,22 @@ export default function Index({ students, stats, formOptions }: Props) {
                             </FormField>
                         </div>
 
+                        <div className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/20 p-4">
+                            <Checkbox 
+                                id="send_credentials" 
+                                checked={data.send_credentials} 
+                                onCheckedChange={(checked) => setData('send_credentials', !!checked)} 
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <Label htmlFor="send_credentials" className="text-sm font-medium">
+                                    Send login credentials via email
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    The student will receive an email containing their student number, email, and password details.
+                                </p>
+                            </div>
+                        </div>
+
                         <LearnerProfileForm
                             data={data}
                             setData={(key, value) => setData(key as keyof StudentForm, value as never)}
@@ -410,6 +463,45 @@ export default function Index({ students, stats, formOptions }: Props) {
                         <DialogFooter>
                             <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>Cancel</Button>
                             <Button type="submit" className="rounded-xl" disabled={processing}>{editing ? 'Save Changes' : 'Create Student'}</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={credentialsModalOpen} onOpenChange={setCredentialsModalOpen}>
+                <DialogContent className="rounded-2xl max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Send Account Credentials</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={submitCredentials} className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Verify or update the student's email and optionally set a new password before sending.
+                        </p>
+                        
+                        <FormField label="Email Address" htmlFor="cred_email" error={credentialsForm.errors.email} required>
+                            <Input 
+                                id="cred_email" 
+                                type="email" 
+                                value={credentialsForm.data.email} 
+                                onChange={(e) => credentialsForm.setData('email', e.target.value)} 
+                                className="rounded-xl" 
+                            />
+                        </FormField>
+
+                        <FormField label="New Password (optional)" htmlFor="cred_password" error={credentialsForm.errors.password}>
+                            <Input 
+                                id="cred_password" 
+                                type="password" 
+                                value={credentialsForm.data.password} 
+                                onChange={(e) => credentialsForm.setData('password', e.target.value)} 
+                                className="rounded-xl" 
+                                placeholder="Leave blank to keep existing password"
+                            />
+                        </FormField>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setCredentialsModalOpen(false)}>Cancel</Button>
+                            <Button type="submit" className="rounded-xl" disabled={credentialsForm.processing}>Send Credentials</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

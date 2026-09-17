@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/students', [RegistrarController::class, 'storeStudent'])->name('students.store')->middleware('permission:manage students');
         Route::put('/students/{student}', [RegistrarController::class, 'updateStudent'])->name('students.update')->middleware('permission:manage students');
         Route::delete('/students/{student}', [RegistrarController::class, 'destroyStudent'])->name('students.destroy')->middleware('permission:manage students');
+        Route::post('/students/{student}/send-credentials', [RegistrarController::class, 'sendCredentials'])->name('students.send-credentials')->middleware('permission:manage students');
         Route::get('/sections', [RegistrarController::class, 'sections'])->name('sections')->middleware('permission:manage sections');
         Route::post('/sections', [RegistrarController::class, 'storeSection'])->name('sections.store')->middleware('permission:manage sections');
         Route::put('/sections/{section}', [RegistrarController::class, 'updateSection'])->name('sections.update')->middleware('permission:manage sections');
