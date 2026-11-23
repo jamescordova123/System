@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\RiskLevel;
 use App\Models\RiskPrediction;
+use App\Models\Section;
 use App\Services\Risk\RiskFeatureBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -47,6 +48,7 @@ class PredictSectionRisk extends Command
         $version = (string) ($output['model_version'] ?? 'unknown');
 
         $table = [];
+        $names = Section::whereIn('id', $rows->pluck('section_id')->unique())->pluck('section_name', 'id');
         $scored = $rows->map(fn (array $r, int $i) => $r + ['probability' => (float) $probabilities[$i]])->groupBy('section_id');
 
         foreach ($scored as $sectionId => $sectionRows) {
@@ -62,12 +64,12 @@ class PredictSectionRisk extends Command
                 );
             }
 
-            $table[] = [$sectionId, $sectionRows->count(), round($probability * 100, 1).'%', $level->value];
+            $table[] = [$names[$sectionId] ?? $sectionId, $sectionRows->count(), round($probability * 100, 1).'%', $level->value];
         }
 
         $this->clearStale($scored->keys()->all());
 
-        $this->table(['Section id', 'Fees scored', 'Probability of failing to pay', 'Risk'], $table);
+        $this->table(['Section', 'Fees scored', 'Probability of failing to pay', 'Risk'], $table);
         $this->info(($this->option('dry-run') ? 'Dry run, nothing saved. ' : 'Saved. ')."Model {$version}.");
 
         return self::SUCCESS;

@@ -174,10 +174,13 @@ class CashierController extends Controller
     public function riskAnalytics()
     {
         // Probability, risk level and drivers come from the random forest (php artisan risk:predict).
-        // Sections the model has not scored yet are left out.
+        // Every section with students is listed; one the model could not score shows why instead.
         $predictiveAnalytics = Section::all()->map(function (Section $section) {
-            // a section whose students were all deleted should not keep showing an old prediction
-            if (! Enrollment::where('section_id', $section->id)->whereHas('student')->exists()) {
+            $enrollments = Enrollment::where('section_id', $section->id)->whereHas('student');
+            $studentIds = (clone $enrollments)->pluck('student_id');
+
+            // a section whose students were all deleted should not keep showing up
+            if ($studentIds->isEmpty()) {
                 return null;
             }
 
@@ -189,29 +192,37 @@ class CashierController extends Controller
                 ->orderByDesc('id')
                 ->first();
 
-            if (! $prediction) {
-                return null;
-            }
-
-            $studentIds = Enrollment::where('section_id', $section->id)->pluck('student_id');
             $billingStatements = BillingStatement::whereIn('student_id', $studentIds)->get();
             $totalBilled = $billingStatements->sum('total_amount');
             $totalCollected = Payment::whereIn('billing_id', $billingStatements->pluck('id'))->sum('amount_paid');
             $totalStatements = $billingStatements->count();
             $unpaidStatements = $billingStatements->where('status', 'unpaid')->count();
 
+            $reason = null;
+            if (! $prediction) {
+                $gradeBilling = $billingStatements
+                    ->filter(fn ($b) => in_array($b->program?->value, ['grade_11', 'grade_12'], true))
+                    ->count();
+
+                $reason = match (true) {
+                    (clone $enrollments)->where('status', 'enrolled')->doesntExist() => 'Not scored: no student here is enrolled yet (enrollment pending or dropped)',
+                    $gradeBilling === 0 => 'Not scored: no Grade 11/12 billing for these students yet',
+                    default => 'Not scored: no upcoming unpaid fees (all paid or past due), or waiting for the next refresh',
+                };
+            }
+
             return [
                 'section_name' => $section->section_name,
                 'course_name' => $section->course_name,
                 'unpaid_ratio' => round($totalStatements > 0 ? ($unpaidStatements / $totalStatements) * 100 : 0, 1),
                 'collection_rate' => round($totalBilled > 0 ? ($totalCollected / $totalBilled) * 100 : 100, 1),
-                'probability' => round($prediction->probability * 100, 1),
-                'risk_level' => $prediction->risk_level->value,
-                'fees_scored' => $prediction->fees_scored,
-                'model_version' => $prediction->model_version,
-                'factors' => $prediction->drivers ?: ['Steady payment history'],
+                'probability' => $prediction ? round($prediction->probability * 100, 1) : null,
+                'risk_level' => $prediction?->risk_level->value,
+                'fees_scored' => $prediction?->fees_scored,
+                'model_version' => $prediction?->model_version,
+                'factors' => $prediction ? ($prediction->drivers ?: ['Steady payment history']) : [$reason],
             ];
-        })->filter()->values();
+        })->filter()->sortByDesc(fn (array $r) => $r['probability'] ?? -1)->values();
 
         return Inertia::render('Cashier/RiskAnalytics/Index', [
             'predictiveAnalytics' => $predictiveAnalytics,

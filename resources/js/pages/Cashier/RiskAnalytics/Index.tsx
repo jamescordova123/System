@@ -12,9 +12,9 @@ type PredictionData = {
     course_name: string;
     unpaid_ratio: number;
     collection_rate: number;
-    probability: number;
-    risk_level: 'high' | 'medium' | 'low';
-    fees_scored: number;
+    probability: number | null;
+    risk_level: 'high' | 'medium' | 'low' | null;
+    fees_scored: number | null;
     factors: string[];
 };
 
@@ -26,11 +26,12 @@ export default function Index({ predictiveAnalytics }: Props) {
     // reload the forecast every minute so new predictions appear without refreshing the page
     usePoll(60000, { only: ['predictiveAnalytics'] });
 
-    const totalSections = predictiveAnalytics.length;
+    const scored = predictiveAnalytics.filter(p => p.probability !== null);
+    const totalSections = scored.length;
     const highRiskCount = predictiveAnalytics.filter(p => p.risk_level === 'high').length;
     const mediumRiskCount = predictiveAnalytics.filter(p => p.risk_level === 'medium').length;
     const avgProb = totalSections > 0 
-        ? Math.round(predictiveAnalytics.reduce((acc, curr) => acc + curr.probability, 0) / totalSections) 
+        ? Math.round(scored.reduce((acc, curr) => acc + (curr.probability ?? 0), 0) / totalSections) 
         : 0;
 
     return (
@@ -98,9 +99,14 @@ export default function Index({ predictiveAnalytics }: Props) {
                                                 {pred.collection_rate}%
                                             </TableCell>
                                             <TableCell className="font-semibold text-rose-600 dark:text-rose-400">
-                                                {pred.probability}%
+                                                {pred.probability !== null ? `${pred.probability}%` : '—'}
                                             </TableCell>
                                             <TableCell>
+                                                {pred.risk_level === null ? (
+                                                    <Badge variant="outline" className="rounded-lg px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                                                        Not scored
+                                                    </Badge>
+                                                ) : (
                                                 <Badge
                                                     variant="outline"
                                                     className={`capitalize rounded-lg px-2 py-0.5 font-semibold text-xs border ${
@@ -113,9 +119,10 @@ export default function Index({ predictiveAnalytics }: Props) {
                                                 >
                                                     {pred.risk_level} Risk
                                                 </Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-xs">
-                                                {pred.fees_scored}
+                                                {pred.fees_scored ?? '—'}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1">
