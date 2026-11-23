@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $ar_number
  * @property string $amount_due
  * @property string $amount_paid
+ * @property Carbon|null $due_date
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -36,6 +37,7 @@ class BillingLineItem extends Model
         'ar_number',
         'amount_due',
         'amount_paid',
+        'due_date',
     ];
 
     /**
@@ -46,6 +48,7 @@ class BillingLineItem extends Model
         return [
             'amount_due' => 'decimal:2',
             'amount_paid' => 'decimal:2',
+            'due_date' => 'date',
         ];
     }
 
