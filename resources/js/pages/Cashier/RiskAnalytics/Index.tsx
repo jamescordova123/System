@@ -1,3 +1,4 @@
+import { usePoll } from '@inertiajs/react';
 import { BrainCircuit, AlertTriangle, ShieldAlert, CheckCircle, TrendingUp } from 'lucide-react';
 import { ModuleShell, setModuleLayout } from '@/components/school/module-shell';
 import { PageHeader } from '@/components/school/page-header';
@@ -22,6 +23,9 @@ type Props = {
 };
 
 export default function Index({ predictiveAnalytics }: Props) {
+    // reload the forecast every minute so new predictions appear without refreshing the page
+    usePoll(60000, { only: ['predictiveAnalytics'] });
+
     const totalSections = predictiveAnalytics.length;
     const highRiskCount = predictiveAnalytics.filter(p => p.risk_level === 'high').length;
     const mediumRiskCount = predictiveAnalytics.filter(p => p.risk_level === 'medium').length;

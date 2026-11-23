@@ -2,7 +2,13 @@
 
 namespace App\Providers;
 
+use App\Jobs\RefreshRiskPredictions;
+use App\Models\BillingLineItem;
+use App\Models\BillingStatement;
 use App\Models\BrandingSetting;
+use App\Models\Enrollment;
+use App\Models\Payment;
+use App\Models\Student;
 use App\Models\SecuritySetting;
 use App\Services\AuditLogger;
 use Carbon\CarbonImmutable;
@@ -54,6 +60,27 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->registerSecurityListeners();
+        $this->registerRiskRefresh();
+    }
+
+    /**
+     * Keep Risk Analytics current: any change to payments, billing, enrollments or students
+     * queues one (de-duplicated, 30 s delayed) run of risk:predict. Needs `php artisan queue:work`.
+     */
+    private function registerRiskRefresh(): void
+    {
+        $refresh = function (): void {
+            try {
+                RefreshRiskPredictions::dispatch()->delay(now()->addSeconds(30))->afterCommit();
+            } catch (\Throwable $e) {
+                report($e); // never block a payment or enrollment because the refresh could not be queued
+            }
+        };
+
+        foreach ([Payment::class, BillingLineItem::class, BillingStatement::class, Enrollment::class, Student::class] as $model) {
+            $model::saved($refresh);
+            $model::deleted($refresh);
+        }
     }
 
     /**
