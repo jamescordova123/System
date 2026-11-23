@@ -21,6 +21,7 @@ class PredictSectionRisk extends Command
         $rows = $builder->scoringRows($today);
 
         if ($rows->isEmpty()) {
+            $this->clearStale([]);
             $this->warn('No upcoming unpaid Grade 11/12 fees to score.');
 
             return self::SUCCESS;
@@ -64,10 +65,34 @@ class PredictSectionRisk extends Command
             $table[] = [$sectionId, $sectionRows->count(), round($probability * 100, 1).'%', $level->value];
         }
 
+        $this->clearStale($scored->keys()->all());
+
         $this->table(['Section id', 'Fees scored', 'Probability of failing to pay', 'Risk'], $table);
         $this->info(($this->option('dry-run') ? 'Dry run, nothing saved. ' : 'Saved. ')."Model {$version}.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Drop this model's earlier predictions for sections that have nothing left to score (for example
+     * after their students were deleted), so they stop showing up in Risk Analytics.
+     *
+     * @param  array<int, int|string>  $keepSectionIds
+     */
+    private function clearStale(array $keepSectionIds): void
+    {
+        if ($this->option('dry-run')) {
+            return;
+        }
+
+        $removed = RiskPrediction::query()
+            ->where('model_used', config('risk.model_label'))
+            ->whereNotIn('section_id', $keepSectionIds)
+            ->delete();
+
+        if ($removed > 0) {
+            $this->line("Removed {$removed} stale prediction(s) for sections with nothing left to score.");
+        }
     }
 
     private function level(float $probability): RiskLevel

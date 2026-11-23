@@ -176,6 +176,11 @@ class CashierController extends Controller
         // Probability, risk level and drivers come from the random forest (php artisan risk:predict).
         // Sections the model has not scored yet are left out.
         $predictiveAnalytics = Section::all()->map(function (Section $section) {
+            // a section whose students were all deleted should not keep showing an old prediction
+            if (! Enrollment::where('section_id', $section->id)->whereHas('student')->exists()) {
+                return null;
+            }
+
             $prediction = RiskPrediction::query()
                 ->where('section_id', $section->id)
                 ->where('model_used', config('risk.model_label'))
