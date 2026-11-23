@@ -27,6 +27,7 @@ type Prediction = {
     prediction_date: string;
     prediction_date_display: string;
     model_used: string;
+    probability: number | null;
 };
 
 type Props = {
@@ -90,6 +91,7 @@ export default function Index({ predictions, stats, sectionOptions }: Props) {
                                     <TableHead>Section</TableHead>
                                     <TableHead>Course</TableHead>
                                     <TableHead>Risk Level</TableHead>
+                                    <TableHead>Probability</TableHead>
                                     <TableHead>Model</TableHead>
                                     <TableHead>Date</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
@@ -101,6 +103,7 @@ export default function Index({ predictions, stats, sectionOptions }: Props) {
                                         <TableCell className="font-medium">{p.section_name}</TableCell>
                                         <TableCell>{p.course_name}</TableCell>
                                         <TableCell><StatusBadge status={p.risk_level} /></TableCell>
+                                        <TableCell>{p.probability !== null ? `${p.probability}%` : '—'}</TableCell>
                                         <TableCell><Badge variant="outline" className="rounded-lg font-mono text-xs">{p.model_used}</Badge></TableCell>
                                         <TableCell>{p.prediction_date_display}</TableCell>
                                         <TableCell className="text-right">

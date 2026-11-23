@@ -13,7 +13,7 @@ type PredictionData = {
     collection_rate: number;
     probability: number;
     risk_level: 'high' | 'medium' | 'low';
-    confidence: number;
+    fees_scored: number;
     factors: string[];
 };
 
@@ -81,7 +81,7 @@ export default function Index({ predictiveAnalytics }: Props) {
                                         <TableHead>Collection Rate</TableHead>
                                         <TableHead>Delinquency Prob.</TableHead>
                                         <TableHead>Risk Classification</TableHead>
-                                        <TableHead>Confidence</TableHead>
+                                        <TableHead>Fees Scored</TableHead>
                                         <TableHead>Key Risk Drivers (Top Forest Features)</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -111,7 +111,7 @@ export default function Index({ predictiveAnalytics }: Props) {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-xs">
-                                                {pred.confidence}%
+                                                {pred.fees_scored}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1">

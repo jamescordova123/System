@@ -270,6 +270,7 @@ class SchoolOverviewController extends Controller
             'prediction_date' => $r->prediction_date->format('Y-m-d'),
             'prediction_date_display' => $r->prediction_date->format('M d, Y'),
             'model_used' => $r->model_used,
+            'probability' => $r->probability !== null ? round($r->probability * 100, 1) : null,
         ];
     }
 }

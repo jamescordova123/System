@@ -12,7 +12,11 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $section_id
  * @property RiskLevel $risk_level
+ * @property float|null $probability
  * @property string $model_used
+ * @property string|null $model_version
+ * @property int|null $fees_scored
+ * @property array<int, string>|null $drivers
  * @property Carbon $prediction_date
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -28,7 +32,11 @@ class RiskPrediction extends Model
     protected $fillable = [
         'section_id',
         'risk_level',
+        'probability',
         'model_used',
+        'model_version',
+        'fees_scored',
+        'drivers',
         'prediction_date',
     ];
 
@@ -40,6 +48,8 @@ class RiskPrediction extends Model
         return [
             'risk_level' => RiskLevel::class,
             'prediction_date' => 'date',
+            'probability' => 'float',
+            'drivers' => 'array',
         ];
     }
 
