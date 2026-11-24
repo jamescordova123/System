@@ -1,0 +1,17 @@
+ app/Console/Commands/PredictSectionRisk.php        |  25 [32m++[m
+ app/Http/Controllers/Cashier/CashierController.php |   5 [32m+[m
+ .../Controllers/Cashier/StudentFeeController.php   |  25 [32m+[m[31m-[m
+ app/Models/BillingLineItem.php                     |   1 [32m+[m
+ app/Models/FeeCatalogItem.php                      |   1 [32m+[m
+ app/Models/User.php                                |  42 [32m+++[m
+ app/Providers/AppServiceProvider.php               |  27 [32m++[m
+ app/Providers/FortifyServiceProvider.php           |   9 [32m+[m
+ database/seeders/FeeCatalogSeeder.php              |  69 [32m++[m[31m---[m
+ ml/README.md                                       |   2 [32m+[m[31m-[m
+ resources/js/pages/Cashier/RiskAnalytics/Index.tsx |   4 [32m+[m
+ resources/js/pages/Cashier/StudentFees/Index.tsx   | 316 [32m+++++++++++++++++++[m[31m--[m
+ resources/js/pages/Cashier/StudentFees/Show.tsx    |  11 [32m+[m
+ resources/js/pages/dashboard.tsx                   |  26 [32m+[m[31m-[m
+ routes/console.php                                 |   4 [32m+[m[31m-[m
+ routes/web.php                                     |  12 [32m+[m[31m-[m
+ 16 files changed, 506 insertions(+), 73 deletions(-)
