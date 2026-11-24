@@ -30,6 +30,16 @@ class RiskFeatureBuilder
     }
 
     /**
+     * Fees already past their deadline and still not fully paid: they have failed for certain.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function overdueRows(Carbon $today): Collection
+    {
+        return $this->rows($today)->filter(fn (array $r) => $r['observed'] && ! $r['fully_paid'])->values();
+    }
+
+    /**
      * Fees whose deadline has passed, with the outcome (for retraining on real payments).
      *
      * @return Collection<int, array<string, mixed>>

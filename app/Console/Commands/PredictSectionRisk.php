@@ -33,37 +33,46 @@ class PredictSectionRisk extends Command
     private function score(RiskFeatureBuilder $builder): int
     {
         $today = Carbon::today();
-        $rows = $builder->scoringRows($today);
+        $upcoming = $builder->scoringRows($today);
+        // fees already past their deadline and unpaid have failed for certain: they count as 100%
+        $overdue = $builder->overdueRows($today);
 
-        if ($rows->isEmpty()) {
+        if ($upcoming->isEmpty() && $overdue->isEmpty()) {
             $this->clearStale([]);
-            $this->warn('No upcoming unpaid Grade 11/12 fees to score.');
+            $this->warn('No upcoming or overdue unpaid Grade 11/12 fees to score.');
 
             return self::SUCCESS;
         }
 
-        $result = Process::timeout((int) config('risk.timeout'))
-            ->input(json_encode(['rows' => $rows->map(fn (array $r) => $builder->modelInput($r))->all()]))
-            ->run([config('risk.python'), config('risk.script')]);
+        $probabilities = [];
+        $version = 'rule-only';
+        if ($upcoming->isNotEmpty()) {
+            $result = Process::timeout((int) config('risk.timeout'))
+                ->input(json_encode(['rows' => $upcoming->map(fn (array $r) => $builder->modelInput($r))->all()]))
+                ->run([config('risk.python'), config('risk.script')]);
 
-        if ($result->failed()) {
-            $this->error('Model failed: '.trim($result->errorOutput() ?: $result->output()));
+            if ($result->failed()) {
+                $this->error('Model failed: '.trim($result->errorOutput() ?: $result->output()));
 
-            return self::FAILURE;
+                return self::FAILURE;
+            }
+
+            $output = json_decode($result->output(), true);
+            $probabilities = $output['probabilities'] ?? [];
+            if (count($probabilities) !== $upcoming->count()) {
+                $this->error('Model returned '.count($probabilities).' scores for '.$upcoming->count().' fees.');
+
+                return self::FAILURE;
+            }
+            $version = (string) ($output['model_version'] ?? 'unknown');
         }
 
-        $output = json_decode($result->output(), true);
-        $probabilities = $output['probabilities'] ?? [];
-        if (count($probabilities) !== $rows->count()) {
-            $this->error('Model returned '.count($probabilities).' scores for '.$rows->count().' fees.');
-
-            return self::FAILURE;
-        }
-        $version = (string) ($output['model_version'] ?? 'unknown');
+        $rows = $upcoming->map(fn (array $r, int $i) => $r + ['probability' => (float) $probabilities[$i], 'overdue' => false])
+            ->concat($overdue->map(fn (array $r) => $r + ['probability' => 1.0, 'overdue' => true]));
 
         $table = [];
         $names = Section::whereIn('id', $rows->pluck('section_id')->unique())->pluck('section_name', 'id');
-        $scored = $rows->map(fn (array $r, int $i) => $r + ['probability' => (float) $probabilities[$i]])->groupBy('section_id');
+        $scored = $rows->groupBy('section_id');
 
         foreach ($scored as $sectionId => $sectionRows) {
             $probability = round($sectionRows->avg('probability'), 4);
@@ -129,6 +138,14 @@ class PredictSectionRisk extends Command
     private function drivers($rows): array
     {
         $drivers = [];
+        $overdue = $rows->where('overdue', true)->count();
+        if ($overdue > 0) {
+            $drivers[] = $overdue.' fee(s) past the deadline and still unpaid';
+        }
+        $rows = $rows->where('overdue', false);
+        if ($rows->isEmpty()) {
+            return $drivers;
+        }
         $withHistory = $rows->where('has_history', 1);
         if ($withHistory->isNotEmpty() && $withHistory->avg('prior_fail_rate') >= 0.3) {
             $drivers[] = 'Earlier fees often paid late or unpaid';
