@@ -2,27 +2,26 @@
 
 namespace App\Jobs;
 
-use Illuminate\Contracts\Queue\ShouldBeUnique;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Re-runs the section risk model after payments, billing, enrollments or students change.
- * Unique, so a burst of changes (e.g. a cashier saving several payments) triggers one run.
+ *
+ * It is dispatched "after the response": it runs in the same PHP process right after the user's request
+ * has been answered, so it needs no queue worker and the cashier never waits for it.
  */
-class RefreshRiskPredictions implements ShouldBeUnique, ShouldQueue
+class RefreshRiskPredictions
 {
-    use Queueable;
-
-    public int $uniqueFor = 120;
-
-    public int $timeout = 150;
-
-    public int $tries = 1;
+    use Dispatchable;
 
     public function handle(): void
     {
-        Artisan::call('risk:predict');
+        $code = Artisan::call('risk:predict');
+
+        if ($code !== 0) {
+            Log::warning('risk:predict failed after a data change: '.trim(Artisan::output()));
+        }
     }
 }

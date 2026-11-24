@@ -23,8 +23,8 @@ type Props = {
 };
 
 export default function Index({ predictiveAnalytics }: Props) {
-    // reload the forecast every minute so new predictions appear without refreshing the page
-    usePoll(60000, { only: ['predictiveAnalytics'] });
+    // reload the forecast every 15 seconds so new predictions appear without refreshing the page
+    usePoll(15000, { only: ['predictiveAnalytics'] });
 
     const scored = predictiveAnalytics.filter(p => p.probability !== null);
     const totalSections = scored.length;

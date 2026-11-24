@@ -64,16 +64,24 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Keep Risk Analytics current: any change to payments, billing, enrollments or students
-     * queues one (de-duplicated, 30 s delayed) run of risk:predict. Needs `php artisan queue:work`.
+     * Keep Risk Analytics current: any change to payments, billing, enrollments or students re-runs
+     * risk:predict right after the response is sent (no queue worker needed).
      */
     private function registerRiskRefresh(): void
     {
-        $refresh = function (): void {
+        $queued = false; // one run per request, even if the request saves many rows
+
+        $refresh = function () use (&$queued): void {
+            // seeders, imports and artisan commands rely on `risk:predict` / the scheduler instead
+            if ($queued || app()->runningInConsole()) {
+                return;
+            }
+            $queued = true;
+
             try {
-                RefreshRiskPredictions::dispatch()->delay(now()->addSeconds(30))->afterCommit();
+                RefreshRiskPredictions::dispatchAfterResponse();
             } catch (\Throwable $e) {
-                report($e); // never block a payment or enrollment because the refresh could not be queued
+                report($e); // never block a payment or enrollment because the refresh could not start
             }
         };
 

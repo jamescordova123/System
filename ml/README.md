@@ -4,7 +4,7 @@ Predicts the chance that a Grade 11/12 fee is paid late or not at all, then aver
 
 ## How it fits together
 
-1. `php artisan risk:predict` (queued 30 s after any payment, billing, enrollment or student change, and scheduled every 15 minutes; needs `php artisan queue:work` and the scheduler running) builds one row per upcoming unpaid fee
+1. `php artisan risk:predict` (runs right after any payment, billing, enrollment or student change, with no queue worker needed, and every 15 minutes if the scheduler is running)
    (`app/Services/Risk/RiskFeatureBuilder.php`), sends them to `ml/predict.py`, and saves one row per section in
    `risk_predictions` (probability, risk level, fees scored, drivers).
 2. The Cashier and Admin "Risk Analytics" pages read those rows.

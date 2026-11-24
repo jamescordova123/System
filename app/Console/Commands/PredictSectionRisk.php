@@ -7,6 +7,8 @@ use App\Models\RiskPrediction;
 use App\Models\Section;
 use App\Services\Risk\RiskFeatureBuilder;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Process;
 
@@ -17,6 +19,18 @@ class PredictSectionRisk extends Command
     protected $description = 'Score upcoming fees with the random forest and save one risk prediction per section';
 
     public function handle(RiskFeatureBuilder $builder): int
+    {
+        // one run at a time: a run started by a later change waits for the earlier one to finish
+        try {
+            return Cache::lock('risk:predict', 120)->block(60, fn () => $this->score($builder));
+        } catch (LockTimeoutException) {
+            $this->error('Another risk:predict run is still going; try again in a minute.');
+
+            return self::FAILURE;
+        }
+    }
+
+    private function score(RiskFeatureBuilder $builder): int
     {
         $today = Carbon::today();
         $rows = $builder->scoringRows($today);
